@@ -7,17 +7,24 @@
 
 import Foundation
 
-struct Publication: Identifiable, Hashable {
-    let id = UUID()
+struct Publication: Identifiable, Hashable, Codable {
+    // Lo mismo para el 'id' de una publicación
+    let id: UUID
     let author: User
     let title: String
     let body: String
     let votes: Int
     let comments: [Comment]
     
-    static var sampleData: [Publication] = [
-        Publication(author: User.example, title: "¿Cómo centrar un `VStack` dentro de un `HStack` en SwiftUI?", body: "He intentado de todo, con Spacers y paddings pero no logro que el VStack se centre verticalmente de forma correcta cuando el contenido del HStack es dinámico.", votes: 42, comments: Comment.sampleData),
-        Publication(author: .example, title: "Error de 'fatal error: unexpectedly found nil while unwrapping an Optional value'", body: "Sé que esto significa que un opcional es nil, pero en mi código no logro ver dónde está el error. Adjunto el fragmento de código que me da problemas...", votes: 15, comments: []),
-        Publication(author: .example, title: "¿Cuál es la mejor manera de manejar la concurrencia en Swift 6?", body: "Con los nuevos cambios en el modelo de actores y `Sendable`, ¿cuál es la práctica recomendada para realizar múltiples llamadas de red de forma segura y eficiente?", votes: 123, comments: [])
-    ]
+    // --- CORRECCIÓN ---
+    // Hacemos lo mismo aquí: creamos un usuario de ejemplo completo localmente.
+    static var sampleData: [Publication] {
+        let sampleUser = User(id: "sampleUserID2", username: "johndoe", fullName: "John Doe", email: "john@doe.com", profilePictureURL: nil, field: "iOS Developer")
+        
+        return [
+            Publication(id: UUID(), author: sampleUser, title: "¿Cómo centrar un `VStack` en SwiftUI?", body: "He intentado de todo...", votes: 42, comments: Comment.sampleData),
+            Publication(id: UUID(), author: sampleUser, title: "Error de 'fatal error: unexpectedly found nil...'", body: "Sé que esto significa que un opcional es nil...", votes: 15, comments: []),
+            Publication(id: UUID(), author: sampleUser, title: "¿Cuál es la mejor manera de manejar la concurrencia?", body: "Con los nuevos cambios en el modelo de actores...", votes: 123, comments: [])
+        ]
+    }
 }

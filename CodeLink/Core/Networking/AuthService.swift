@@ -5,120 +5,143 @@
 //  Created by Jamil Turpo on 24/06/25.
 //
 
+
 import Foundation
 import FirebaseCore
 import FirebaseAuth
+import FirebaseDatabase
+import FirebaseStorage
 import GoogleSignIn
 
 class AuthService: ObservableObject {
     
-    // Publicamos el usuario de Firebase directamente.
-    // La vista reaccionará cuando este cambie (de nil a un valor, o viceversa).
-    @Published var user: FirebaseAuth.User?
+    @Published var firebaseUser: FirebaseAuth.User?
+    @Published var appUser: User?
     
-    // Guardamos una referencia al "oyente" para poder quitarlo después
-    // y evitar fugas de memoria.
     private var authStateHandle: AuthStateDidChangeListenerHandle?
-    
+    private var userProfileHandle: DatabaseHandle?
+    private var dbRef: DatabaseReference = Database.database().reference()
+    private var storageRef: StorageReference = Storage.storage().reference()
+
     init() {
-        // En cuanto se crea el servicio, empezamos a escuchar los cambios.
         addStateListener()
     }
     
     deinit {
-        // Es una buena práctica quitar el oyente cuando el objeto se destruye.
         removeStateListener()
+        removeUserProfileListener()
     }
     
-    /// Se suscribe a los cambios de estado de autenticación de Firebase.
     private func addStateListener() {
-        // addStateDidChangeListener es el método clásico.
-        // Se le pasa un closure (bloque de código) que se ejecutará
-        // cada vez que un usuario inicie o cierre sesión.
         authStateHandle = Auth.auth().addStateDidChangeListener { [weak self] (auth, user) in
-            // Nos aseguramos de que la actualización de la variable @Published
-            // se haga en el hilo principal, ya que afectará a la UI.
             DispatchQueue.main.async {
-                self?.user = user
+                self?.firebaseUser = user
+                if let firebaseUser = user {
+                    self?.listenForUserProfileChanges(userId: firebaseUser.uid)
+                } else {
+                    self?.removeUserProfileListener()
+                    self?.appUser = nil
+                }
             }
         }
     }
     
-    /// Deja de escuchar los cambios de estado.
+    private func listenForUserProfileChanges(userId: String) {
+        let userRef = dbRef.child("users").child(userId)
+        self.userProfileHandle = userRef.observe(.value) { [weak self] snapshot in
+            if snapshot.exists(), let userData = snapshot.value as? [String: Any] {
+                do {
+                    let jsonData = try JSONSerialization.data(withJSONObject: userData)
+                    let userProfile = try JSONDecoder().decode(User.self, from: jsonData)
+                    self?.appUser = userProfile
+                } catch { print("Error al decodificar perfil de usuario en tiempo real: \(error)") }
+            } else {
+                self?.createUserProfileIfNeeded(for: userId)
+            }
+        }
+    }
+    
+    private func createUserProfileIfNeeded(for userId: String) {
+        guard let firebaseUser = Auth.auth().currentUser else { return }
+        let newUser = User(
+            id: firebaseUser.uid,
+            username: firebaseUser.email?.components(separatedBy: "@").first ?? "nuevo_usuario",
+            fullName: firebaseUser.displayName ?? "Sin Nombre",
+            email: firebaseUser.email ?? "Sin Email",
+            profilePictureURL: firebaseUser.photoURL?.absoluteString,
+            field: "Tech Enthusiast",
+            aboutMe: "¡Hola! Soy nuevo en CodeLink."
+        )
+        updateUserProfile(newUser)
+    }
+
     private func removeStateListener() {
         if let authStateHandle = authStateHandle {
             Auth.auth().removeStateDidChangeListener(authStateHandle)
         }
     }
     
-    func signInWithGoogle() {
-        // Obtenemos el ID de cliente de nuestro .plist
-        guard let clientID = FirebaseApp.app()?.options.clientID else {
-            print("Error: No se encontró el clientID de Firebase.")
-            return
+    private func removeUserProfileListener() {
+        guard let userProfileHandle = userProfileHandle, let userId = firebaseUser?.uid else { return }
+        let userRef = dbRef.child("users").child(userId)
+        userRef.removeObserver(withHandle: userProfileHandle)
+    }
+
+    func updateUserProfile(_ user: User) {
+        do {
+            let data = try JSONEncoder().encode(user)
+            let json = try JSONSerialization.jsonObject(with: data)
+            dbRef.child("users").child(user.id).setValue(json)
+        } catch {
+            print("Error al guardar perfil de usuario: \(error)")
+        }
+    }
+    
+    // --- FUNCIÓN DE SUBIR IMAGEN REESCRITA CON ASYNC/AWAIT ---
+    func uploadProfileImage(_ imageData: Data) async throws -> URL {
+        guard let userId = firebaseUser?.uid else {
+            throw URLError(.badURL) // Lanza un error si no hay ID de usuario
         }
         
-        // Creamos la configuración de Google Sign In
+        let profilePicRef = storageRef.child("profile_pictures/\(userId).jpg")
+        
+        // El nuevo método 'putDataAsync' espera a que la subida termine
+        let _ = try await profilePicRef.putDataAsync(imageData)
+        
+        // El nuevo método 'downloadURL()' también espera a obtener la URL
+        let downloadURL = try await profilePicRef.downloadURL()
+        
+        return downloadURL
+    }
+    
+    // --- El resto de los métodos de Login y Logout se quedan igual ---
+    // (Asegúrate de que estén aquí)
+    func signInWithGoogle() {
+        guard let clientID = FirebaseApp.app()?.options.clientID else { return }
         let config = GIDConfiguration(clientID: clientID)
         GIDSignIn.sharedInstance.configuration = config
-        
-        // Obtenemos la ventana principal para presentar el flujo de login
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let window = windowScene.windows.first,
-              let rootViewController = window.rootViewController else {
-            print("Error: No se pudo encontrar la ventana principal.")
-            return
-        }
-
-        // Iniciamos el flujo de Google Sign In
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene, let window = windowScene.windows.first, let rootViewController = window.rootViewController else { return }
         GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController) { [weak self] result, error in
-            guard error == nil, let user = result?.user, let idToken = user.idToken?.tokenString else {
-                print("Error en Google Sign In: \(error?.localizedDescription ?? "N/A")")
-                return
-            }
-            
-            // Creamos la credencial de Firebase con el token de Google
-            let credential = GoogleAuthProvider.credential(withIDToken: idToken,
-                                                             accessToken: user.accessToken.tokenString)
-            
-            // Autenticamos en Firebase
+            guard error == nil, let user = result?.user, let idToken = user.idToken?.tokenString else { return }
+            let credential = GoogleAuthProvider.credential(withIDToken: idToken, accessToken: user.accessToken.tokenString)
             self?.authenticate(with: credential)
         }
     }
-    
     func signInWithGitHub() {
         let provider = OAuthProvider(providerID: "github.com")
-        
         provider.getCredentialWith(nil) { [weak self] credential, error in
-            guard let credential = credential, error == nil else {
-                print("Error en GitHub Sign In: \(error?.localizedDescription ?? "N/A")")
-                return
-            }
-            // Autenticamos en Firebase
+            guard let credential = credential, error == nil else { return }
             self?.authenticate(with: credential)
         }
     }
-    
     private func authenticate(with credential: AuthCredential) {
-        Auth.auth().signIn(with: credential) { result, error in
-            if let error = error {
-                print("Error al autenticar en Firebase: \(error.localizedDescription)")
-            }
-            // No necesitamos hacer nada más aquí.
-            // El 'addStateDidChangeListener' se encargará automáticamente
-            // de detectar el cambio y actualizar la variable 'user'.
+        Auth.auth().signIn(with: credential) { _, error in
+            if let error = error { print("Error al autenticar en Firebase: \(error.localizedDescription)") }
         }
     }
-    
     func signOut() {
-        // Cerramos sesión en Google Sign In para que permita elegir otra cuenta la próxima vez.
         GIDSignIn.sharedInstance.signOut()
-        
-        // Cerramos sesión en Firebase.
-        do {
-            try Auth.auth().signOut()
-        } catch {
-            print("Error al cerrar sesión en Firebase: \(error.localizedDescription)")
-        }
+        do { try Auth.auth().signOut() }
+        catch { print("Error al cerrar sesión en Firebase: \(error.localizedDescription)") }
     }
 }

@@ -6,12 +6,12 @@
 //
 import Foundation
 
-struct User: Identifiable, Hashable {
-    let id = UUID()
-    let username: String
-    let fullName: String
-    let profilePicture: String // Usaremos nombres de SF Symbols por ahora
-    let field: String // "Frontend", "Backend", etc.
-    
-    static var example = User(username: "johndoe", fullName: "John Doe", profilePicture: "person.crop.circle.fill", field: "iOS Developer")
+struct User: Identifiable, Hashable, Codable {
+    let id: String
+    var username: String
+    var fullName: String
+    let email: String
+    var profilePictureURL: String? // Lo haremos 'var' para poder cambiarlo
+    var field: String
+    var aboutMe: String? // NUEVO: Campo para la biografía
 }

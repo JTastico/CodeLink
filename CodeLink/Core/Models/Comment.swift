@@ -7,13 +7,20 @@
 
 import Foundation
 
-struct Comment: Identifiable, Hashable {
-    let id = UUID()
+struct Comment: Identifiable, Hashable, Codable {
+    // El 'id' de un comentario puede ser un UUID porque no lo guardamos por separado en la DB
+    let id: UUID
     let author: User
     let text: String
     
-    static var sampleData: [Comment] = [
-        Comment(author: User.example, text: "¡Gran pregunta! Intenta invalidar el layout del CollectionView."),
-        Comment(author: User(username: "janedev", fullName: "Jane Dev", profilePicture: "person.crop.circle", field: "Android Developer"), text: "A mí me pasó lo mismo, la solución es usar un `GeometryReader` para obtener el tamaño del contenedor padre.")
-    ]
+    // --- CORRECCIÓN ---
+    // Creamos un usuario de ejemplo completo aquí mismo para nuestros datos de prueba.
+    static var sampleData: [Comment] {
+        let sampleUser = User(id: "sampleUserID1", username: "janedev", fullName: "Jane Dev", email: "jane@dev.com", profilePictureURL: nil, field: "Android Developer")
+        
+        return [
+            Comment(id: UUID(), author: sampleUser, text: "¡Gran pregunta! Intenta invalidar el layout del CollectionView."),
+            Comment(id: UUID(), author: sampleUser, text: "A mí me pasó lo mismo, la solución es usar un `GeometryReader`.")
+        ]
+    }
 }

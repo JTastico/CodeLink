@@ -24,13 +24,11 @@ struct CodeLinkApp: App {
     
     var body: some Scene {
         WindowGroup {
-            if authService.user != nil {
-                // ANTES: MainView().environmentObject(authService)
-                // AHORA: Le pasamos el servicio directamente
+            // --- LA CORRECCIÓN ESTÁ AQUÍ ---
+            // Verificamos si existe el usuario de Firebase, no una variable 'user' genérica.
+            if authService.firebaseUser != nil {
                 MainView(authService: authService)
             } else {
-                // ANTES: LoginView().environmentObject(authService)
-                // AHORA: Le pasamos el servicio directamente
                 LoginView(authService: authService)
             }
         }
