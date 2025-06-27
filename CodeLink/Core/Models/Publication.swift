@@ -9,10 +9,8 @@ import Foundation
 
 struct Publication: Identifiable, Hashable, Codable {
     var id: String
-    
     let authorUid: String
     var authorUsername: String
-    
     var description: String
     var imageURL: String?
     let createdAt: TimeInterval

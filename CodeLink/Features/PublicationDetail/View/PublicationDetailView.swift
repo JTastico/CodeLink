@@ -97,7 +97,7 @@ struct PublicationDetailView: View {
     let sampleAuthor = User(id: "123", username: "preview_user", fullName: "Preview Name", email: "preview@test.com", profilePictureURL: nil, field: "iOS Developer", aboutMe: nil)
     let samplePublication = Publication(id: "abc", authorUid: "123", authorUsername: "preview_user", description: "Esta es una descripción de ejemplo.", imageURL: nil, createdAt: Date().timeIntervalSince1970, status: .help, likes: 0, commentCount: 0)
     
-    NavigationStack {
+    return NavigationStack {
         PublicationDetailView(publication: samplePublication, currentUser: sampleAuthor)
     }
 }

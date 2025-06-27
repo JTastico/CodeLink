@@ -7,6 +7,7 @@
 
 import SwiftUI
 import FirebaseCore
+import SwiftData
 
 class AppDelegate: NSObject, UIApplicationDelegate {
   func application(_ application: UIApplication,
@@ -32,5 +33,6 @@ struct CodeLinkApp: App {
                 LoginView(authService: authService)
             }
         }
+        .modelContainer(for: PublicationDraft.self)
     }
 }

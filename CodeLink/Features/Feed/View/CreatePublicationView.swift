@@ -10,47 +10,26 @@ import PhotosUI
 
 struct CreatePublicationView: View {
     @Environment(\.dismiss) var dismiss
+    @Environment(\.modelContext) private var modelContext
     
     private let publicationService = PublicationService()
     let author: User
     
     @State private var description: String = ""
     @State private var status: PublicationStatus = .help
-    @State private var selectedPhoto: PhotosPickerItem?
-    @State private var selectedPhotoData: Data?
     @State private var isPosting = false
+    
+    @State private var showingDrafts = false
     
     var body: some View {
         NavigationStack {
-            // --- FORMULARIO CON TODO EL CONTENIDO ---
             Form {
                 Section("Contenido de la Publicación") {
-                    // Campo de texto para la descripción
                     TextEditor(text: $description)
                         .frame(minHeight: 150)
-                        .padding(4)
                     
-                    // Selector para el estado de la publicación
                     Picker("Estado", selection: $status) {
-                        ForEach(PublicationStatus.allCases, id: \.self) { status in
-                            Text(status.displayName)
-                        }
-                    }
-                }
-                
-                Section("Imagen (Opcional)") {
-                    // Mostramos la imagen seleccionada si existe
-                    if let selectedPhotoData, let uiImage = UIImage(data: selectedPhotoData) {
-                        Image(uiImage: uiImage)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxWidth: .infinity, maxHeight: 200)
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
-                    }
-                    
-                    // Botón para abrir el selector de fotos
-                    PhotosPicker(selection: $selectedPhoto, matching: .images, photoLibrary: .shared()) {
-                        Label("Seleccionar una foto", systemImage: "photo.on.rectangle.angled")
+                        ForEach(PublicationStatus.allCases, id: \.self) { status in Text(status.displayName) }
                     }
                 }
             }
@@ -58,53 +37,59 @@ struct CreatePublicationView: View {
             .navigationTitle("Nueva Publicación")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItemGroup(placement: .cancellationAction) {
                     Button("Cancelar") { dismiss() }.disabled(isPosting)
                 }
-                ToolbarItem(placement: .confirmationAction) {
+                
+                ToolbarItemGroup(placement: .confirmationAction) {
+                    Button("Guardar Borrador") {
+                        saveDraft()
+                    }.disabled(description.isEmpty || isPosting)
+                    
                     if isPosting {
                         ProgressView()
                     } else {
                         Button("Publicar") {
                             Task { await createPublication() }
-                        }
-                        // El botón se deshabilita si no hay descripción
-                        .disabled(description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        }.disabled(description.isEmpty)
                     }
+                }
+                
+                ToolbarItemGroup(placement: .bottomBar) {
+                    Button {
+                        showingDrafts = true
+                    } label: {
+                        Label("Cargar Borrador", systemImage: "tray.and.arrow.down.fill")
+                    }
+                    Spacer()
                 }
             }
-            .onChange(of: selectedPhoto) {
-                // Cargamos los datos de la foto seleccionada
-                Task {
-                    if let data = try? await selectedPhoto?.loadTransferable(type: Data.self) {
-                        selectedPhotoData = data
-                    }
-                }
+            // --- LA CORRECCIÓN ESTÁ AQUÍ ---
+            .sheet(isPresented: $showingDrafts) {
+                // Hacemos explícito el nombre del parámetro 'onSelectDraft'
+                // para evitar la ambigüedad.
+                DraftsListView(currentUserId: author.id, onSelectDraft: { selectedDraft in
+                    self.description = selectedDraft.draftDescription
+                    self.status = selectedDraft.status
+                })
             }
         }
+    }
+    
+    private func saveDraft() {
+        let newDraft = PublicationDraft(description: description, status: status, authorUid: author.id)
+        modelContext.insert(newDraft)
+        dismiss()
     }
     
     private func createPublication() async {
         isPosting = true
         do {
-            try await publicationService.createPublication(
-                description: description,
-                status: status,
-                imageData: selectedPhotoData,
-                author: author
-            )
-            // Si todo sale bien, cerramos la vista
+            try await publicationService.createPublication(description: description, status: status, imageData: nil, author: author)
             dismiss()
         } catch {
-            print("Error al crear la publicación desde la vista: \(error.localizedDescription)")
-            // Aquí podrías mostrar una alerta al usuario
+            print("Error al crear la publicación: \(error.localizedDescription)")
             isPosting = false
         }
     }
-}
-
-// Vista previa para el lienzo de Xcode
-#Preview {
-    let sampleUser = User(id: "previewUser", username: "preview", fullName: "Preview User", email: "preview@test.com", profilePictureURL: nil, field: "Previewer", aboutMe: nil)
-    return CreatePublicationView(author: sampleUser)
 }

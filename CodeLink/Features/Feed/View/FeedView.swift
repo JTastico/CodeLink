@@ -8,12 +8,10 @@
 import SwiftUI
 
 // --- SUB-VISTA PARA CADA FILA DE LA LISTA ---
-// Extraemos la lógica de cada fila a su propia vista para ayudar al compilador.
 struct PublicationRowView: View {
-    // Usamos @Binding para que los cambios (como los likes) se actualicen en el ViewModel
     @Binding var publication: Publication
     let currentUserId: String
-    let currentUser: User? // Necesitamos el objeto User completo para los comentarios
+    let currentUser: User?
     
     private let publicationService = PublicationService()
     
@@ -21,23 +19,17 @@ struct PublicationRowView: View {
     @State private var showingComments = false
     @State private var youLiked = false
     
-    // Comprueba si el usuario actual es el autor de la publicación
     var isAuthor: Bool {
         return publication.authorUid == currentUserId
     }
     
-    // --- LA CORRECCIÓN CLAVE ---
-    /// Creamos propiedades computadas para los textos de los botones.
-    /// Esto simplifica la vista y evita que el compilador se confunda.
-    private var likesLabel: String {
-        "\(publication.likes) Me gusta"
-    }
-    
-    private var commentLabel: String {
-        "\(publication.commentCount) Comentar"
-    }
-    
     var body: some View {
+        // --- LA CORRECCIÓN CLAVE ESTÁ AQUÍ ---
+        // Creamos constantes locales dentro del body. Esto simplifica la expresión
+        // para el compilador y soluciona el error.
+        let likesText = "\(publication.likes) Me gusta"
+        let commentsText = "\(publication.commentCount) Comentar"
+        
         VStack(alignment: .leading, spacing: 12) {
             // Cabecera con autor y menú de opciones
             HStack {
@@ -48,31 +40,22 @@ struct PublicationRowView: View {
                 }
                 Spacer()
                 
-                // Menú de opciones (solo para el autor)
                 if isAuthor {
                     Menu {
-                        Button { showingEditView = true } label: {
-                            Label("Editar", systemImage: "pencil")
-                        }
+                        Button { showingEditView = true } label: { Label("Editar", systemImage: "pencil") }
                         Button(role: .destructive) {
-                            Task {
-                                try? await publicationService.deletePublication(publication)
-                            }
+                            Task { try? await publicationService.deletePublication(publication) }
                         } label: {
                             Label("Eliminar", systemImage: "trash")
                         }
                     } label: {
-                        Image(systemName: "ellipsis")
-                            .padding(8)
-                            .background(Color.gray.opacity(0.1))
-                            .clipShape(Circle())
+                        Image(systemName: "ellipsis").padding(8).background(Color.gray.opacity(0.1)).clipShape(Circle())
                     }
                     .menuStyle(.button)
                 }
             }
             
-            // Contenido de la publicación
-            Text(publication.description)
+            Text(publication.description).lineLimit(5)
             
             HStack {
                 Text(publication.status.displayName)
@@ -83,23 +66,21 @@ struct PublicationRowView: View {
             
             Divider()
             
-            // --- BOTONES DE INTERACCIÓN (USANDO LAS PROPIEDADES CORREGIDAS) ---
+            // Botones de interacción usando las constantes locales
             HStack(spacing: 20) {
                 Spacer()
                 Button {
                     youLiked.toggle()
                     publicationService.likePublication(publicationId: publication.id, currentLikes: publication.likes, shouldLike: youLiked)
                 } label: {
-                    // Ahora usamos la propiedad computada, que es más simple.
-                    Label(likesLabel, systemImage: youLiked ? "hand.thumbsup.fill" : "hand.thumbsup")
+                    Label(likesText, systemImage: youLiked ? "hand.thumbsup.fill" : "hand.thumbsup")
                 }
                 .tint(youLiked ? .blue : .secondary)
                 
                 Button {
                     showingComments = true
                 } label: {
-                    // Ahora usamos la propiedad computada, que es más simple.
-                    Label(commentLabel, systemImage: "text.bubble")
+                    Label(commentsText, systemImage: "text.bubble")
                 }
                 Spacer()
             }
@@ -108,15 +89,11 @@ struct PublicationRowView: View {
         }
         .padding(.vertical, 8)
         .sheet(isPresented: $showingEditView) {
-            // Hoja modal para editar
             EditPublicationView(publication: $publication)
         }
-        // Hoja modal para los comentarios
         .sheet(isPresented: $showingComments) {
-            // Se presenta solo si tenemos los datos del usuario actual
             if let currentUser = currentUser {
                 CommentsView(publication: publication, currentUser: currentUser)
-                    // Presenta la hoja con un tamaño mediano y un indicador para arrastrar
                     .presentationDetents([.medium, .large])
             }
         }
@@ -135,18 +112,15 @@ struct FeedView: View {
         NavigationStack {
             List {
                 ForEach($viewModel.publications) { $publication in
-                    // Pasamos el usuario actual a la fila para que pueda usarlo la vista de comentarios
-                    PublicationRowView(publication: $publication, currentUserId: authService.appUser?.id ?? "", currentUser: authService.appUser)
+                    NavigationLink(destination: PublicationDetailView(publication: publication, currentUser: authService.appUser)) {
+                        PublicationRowView(publication: $publication, currentUserId: authService.appUser?.id ?? "", currentUser: authService.appUser)
+                    }
                 }
             }
             .listStyle(.plain)
             .navigationTitle("Feed")
             .toolbar {
-                Button {
-                    showingCreatePublication = true
-                } label: {
-                    Image(systemName: "plus.circle.fill")
-                }
+                Button { showingCreatePublication = true } label: { Image(systemName: "plus.circle.fill") }
             }
             .sheet(isPresented: $showingCreatePublication) {
                 if let currentUser = authService.appUser {
