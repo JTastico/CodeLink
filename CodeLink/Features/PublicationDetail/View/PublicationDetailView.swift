@@ -7,6 +7,64 @@
 
 import SwiftUI
 
+// --- SUB-VISTA DEDICADA PARA LA LISTA DE COMENTARIOS ---
+// Esto soluciona el error del compilador y organiza el código.
+struct CommentListView: View {
+    @ObservedObject var viewModel: CommentsViewModel
+    
+    var body: some View {
+        VStack(alignment: .leading) {
+            Text("Comentarios")
+                .font(.headline)
+                .padding(.bottom, 4)
+            
+            // --- CORRECCIÓN: Usamos 'commentThreads' en lugar de 'comments' ---
+            if viewModel.commentThreads.isEmpty {
+                Text("Aún no hay comentarios. ¡Sé el primero!")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical)
+            } else {
+                // --- CORRECCIÓN: Iteramos sobre los hilos ---
+                ForEach(viewModel.commentThreads) { thread in
+                    // Mostramos el comentario padre
+                    CommentRowView(comment: thread.parent)
+                        .padding(.bottom, 8)
+                    
+                    // Mostramos las respuestas con una indentación
+                    ForEach(thread.replies) { reply in
+                        CommentRowView(comment: reply)
+                            .padding(.leading, 30) // Indentación
+                    }
+                    Divider()
+                }
+            }
+        }
+    }
+}
+
+// --- SUB-VISTA PARA CADA FILA DE COMENTARIO ---
+// Esto nos permite reutilizar el diseño para padres y respuestas.
+struct CommentRowView: View {
+    let comment: Comment
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(comment.authorUsername).font(.caption.bold())
+                Spacer()
+                Text(comment.formattedDate).font(.caption2).foregroundStyle(.secondary)
+            }
+            Text(comment.text).font(.callout)
+            
+            // Aquí podríamos añadir un botón de "Responder" en el futuro
+        }
+    }
+}
+
+
+// --- VISTA PRINCIPAL (AHORA MÁS SIMPLE Y CORRECTA) ---
 struct PublicationDetailView: View {
     let publication: Publication
     let currentUser: User?
@@ -38,27 +96,13 @@ struct PublicationDetailView: View {
                     
                     Divider()
                     
-                    Text("Comentarios").font(.headline).padding(.bottom, 4)
-                    
-                    if viewModel.comments.isEmpty {
-                        Text("Aún no hay comentarios. ¡Sé el primero!")
-                            .font(.caption).foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .center).padding(.vertical)
-                    } else {
-                        ForEach(viewModel.comments) { comment in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(comment.authorUsername).font(.caption.bold())
-                                Text(comment.text).font(.callout)
-                                Text(comment.formattedDate).font(.caption2).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .trailing)
-                            }
-                            .padding(.bottom, 8)
-                            Divider()
-                        }
-                    }
+                    // Llamamos a nuestra nueva sub-vista que ya no tiene errores
+                    CommentListView(viewModel: viewModel)
                 }
                 .padding()
             }
             
+            // Campo de texto para añadir un nuevo comentario
             if currentUser != nil {
                 HStack(spacing: 12) {
                     TextField("Escribe un comentario...", text: $newCommentText)
@@ -80,24 +124,14 @@ struct PublicationDetailView: View {
 
     private func postComment() async {
         guard let author = currentUser, !newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        
         let commentToPost = newCommentText
         newCommentText = ""
-        
         do {
-            try await publicationService.addComment(text: commentToPost, to: publication, by: author)
+            // Dejamos el parentId como nil para crear un comentario de primer nivel
+            try await publicationService.addComment(text: commentToPost, to: publication, by: author, parentId: nil)
         } catch {
             print("Error al postear comentario: \(error)")
             newCommentText = commentToPost
         }
-    }
-}
-
-#Preview {
-    let sampleAuthor = User(id: "123", username: "preview_user", fullName: "Preview Name", email: "preview@test.com", profilePictureURL: nil, field: "iOS Developer", aboutMe: nil)
-    let samplePublication = Publication(id: "abc", authorUid: "123", authorUsername: "preview_user", description: "Esta es una descripción de ejemplo.", imageURL: nil, createdAt: Date().timeIntervalSince1970, status: .help, likes: 0, commentCount: 0)
-    
-    return NavigationStack {
-        PublicationDetailView(publication: samplePublication, currentUser: sampleAuthor)
     }
 }

@@ -110,26 +110,25 @@ class PublicationService: ObservableObject {
     }
     
     // --- AÑADIR COMENTARIO ---
-    func addComment(text: String, to publication: Publication, by author: User) async throws {
+    func addComment(text: String, to publication: Publication, by author: User, parentId: String? = nil) async throws {
         let newComment = Comment(
-            id: "", // Se asignará luego
             publicationId: publication.id,
             authorUid: author.id,
             authorUsername: author.username,
             text: text,
-            createdAt: Date().timeIntervalSince1970
+            createdAt: Date().timeIntervalSince1970,
+            parentId: parentId // Guardamos el ID del padre
         )
         
+        // La ruta para guardar no cambia, sigue siendo bajo el ID de la publicación.
         let commentRef = dbRef.child("comments").child(publication.id).childByAutoId()
-        var commentToSave = newComment
-        commentToSave.id = commentRef.key ?? UUID().uuidString
-        
-        let commentData = try JSONEncoder().encode(commentToSave)
+        let commentData = try JSONEncoder().encode(newComment)
         let commentJson = try JSONSerialization.jsonObject(with: commentData)
         try await commentRef.setValue(commentJson)
         
-        let commentCountRef = dbRef.child("publications").child(publication.id).child("commentCount")
-        try await commentCountRef.runTransactionBlock { currentData in
+        // Actualizamos el contador de comentarios de la publicación
+        let publicationCommentsRef = dbRef.child("publications").child(publication.id).child("commentCount")
+        try await publicationCommentsRef.runTransactionBlock { (currentData: MutableData) -> TransactionResult in
             var count = currentData.value as? Int ?? 0
             count += 1
             currentData.value = count
