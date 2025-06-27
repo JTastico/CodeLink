@@ -8,23 +8,35 @@
 import Foundation
 
 struct Publication: Identifiable, Hashable, Codable {
-    // Lo mismo para el 'id' de una publicación
-    let id: UUID
-    let author: User
-    let title: String
-    let body: String
-    let votes: Int
-    let comments: [Comment]
+    // Usaremos un String para el ID para que coincida con la clave de Firebase.
+    var id: String
     
-    // --- CORRECCIÓN ---
-    // Hacemos lo mismo aquí: creamos un usuario de ejemplo completo localmente.
-    static var sampleData: [Publication] {
-        let sampleUser = User(id: "sampleUserID2", username: "johndoe", fullName: "John Doe", email: "john@doe.com", profilePictureURL: nil, field: "iOS Developer")
+    let authorUid: String
+    var authorUsername: String
+    
+    var description: String
+    var imageURL: String? // La URL de la imagen en Firebase Storage (opcional)
+    
+    // Usamos TimeInterval (un Double) para guardar la fecha, es compatible con Firebase.
+    let createdAt: TimeInterval
+    
+    var status: PublicationStatus
+    
+    var likes: Int = 0
+    // Podríamos añadir más campos después, como un array de IDs de comentarios.
+    
+    // --- LA PIEZA QUE FALTABA ---
+    /// Propiedad computada para obtener la fecha formateada en un string legible.
+    var formattedDate: String {
+        // Convierte el TimeInterval a un objeto Date.
+        let date = Date(timeIntervalSince1970: createdAt)
         
-        return [
-            Publication(id: UUID(), author: sampleUser, title: "¿Cómo centrar un `VStack` en SwiftUI?", body: "He intentado de todo...", votes: 42, comments: Comment.sampleData),
-            Publication(id: UUID(), author: sampleUser, title: "Error de 'fatal error: unexpectedly found nil...'", body: "Sé que esto significa que un opcional es nil...", votes: 15, comments: []),
-            Publication(id: UUID(), author: sampleUser, title: "¿Cuál es la mejor manera de manejar la concurrencia?", body: "Con los nuevos cambios en el modelo de actores...", votes: 123, comments: [])
-        ]
+        // Usa un DateFormatter para darle el estilo que queremos.
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short // "26/6/25"
+        formatter.timeStyle = .short // "10:58 PM"
+        
+        // Devuelve el string final.
+        return formatter.string(from: date)
     }
 }
