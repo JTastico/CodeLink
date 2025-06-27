@@ -13,26 +13,11 @@ struct DraftsListView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.modelContext) private var modelContext
     
-    // La consulta @Query ahora se configura en el inicializador para poder filtrar.
-    @Query private var drafts: [PublicationDraft]
+    // En lugar de una @Query, usamos un @State simple para los borradores.
+    @State private var drafts: [PublicationDraft] = []
     
+    let currentUserId: String
     var onSelectDraft: (PublicationDraft) -> Void
-    
-    // --- INICIALIZADOR PERSONALIZADO PARA FILTRAR ---
-    // Este es el cambio clave para que cada usuario solo vea sus borradores.
-    init(currentUserId: String, onSelectDraft: @escaping (PublicationDraft) -> Void) {
-        self.onSelectDraft = onSelectDraft
-        
-        // Creamos un "predicado" o filtro para la consulta.
-        // Le decimos a SwiftData: "dame solo los borradores cuyo 'authorUid'
-        // sea igual al ID del usuario actual".
-        let predicate = #Predicate<PublicationDraft> { draft in
-            draft.authorUid == currentUserId
-        }
-        
-        // Configuramos la consulta @Query con el filtro y el orden.
-        _drafts = Query(filter: predicate, sort: \.createdAt, order: .reverse)
-    }
     
     var body: some View {
         NavigationStack {
@@ -74,6 +59,31 @@ struct DraftsListView: View {
                     Button("Cerrar") { dismiss() }
                 }
             }
+            // --- LA CORRECCIÓN CLAVE ESTÁ AQUÍ ---
+            // Usamos .onAppear para cargar los borradores manualmente
+            // justo cuando la vista va a aparecer en pantalla.
+            .onAppear(perform: fetchDrafts)
+        }
+    }
+    
+    /// Carga manualmente los borradores desde SwiftData, filtrando por el usuario actual.
+    private func fetchDrafts() {
+        print("DEBUG: .onAppear activado. Buscando borradores para el usuario: \(currentUserId)")
+        
+        // 1. Creamos la descripción de la consulta (fetch descriptor).
+        let predicate = #Predicate<PublicationDraft> { draft in
+            draft.authorUid == currentUserId
+        }
+        let sort = SortDescriptor(\PublicationDraft.createdAt, order: .reverse)
+        let descriptor = FetchDescriptor<PublicationDraft>(predicate: predicate, sortBy: [sort])
+        
+        // 2. Ejecutamos la consulta.
+        do {
+            let fetchedDrafts = try modelContext.fetch(descriptor)
+            print("DEBUG: ¡Éxito! Se encontraron \(fetchedDrafts.count) borradores.")
+            self.drafts = fetchedDrafts
+        } catch {
+            print("DEBUG: ERROR FATAL al cargar los borradores manualmente: \(error.localizedDescription)")
         }
     }
     
@@ -81,6 +91,15 @@ struct DraftsListView: View {
         for index in offsets {
             let draftToDelete = drafts[index]
             modelContext.delete(draftToDelete)
+            
+            // Forzamos un guardado explícito al eliminar también.
+            do {
+                try modelContext.save()
+            } catch {
+                print("DEBUG: Error al guardar después de eliminar: \(error.localizedDescription)")
+            }
         }
+        // Removemos el borrador de la lista local para que la UI se actualice al instante.
+        drafts.remove(atOffsets: offsets)
     }
 }

@@ -18,7 +18,6 @@ struct CreatePublicationView: View {
     @State private var description: String = ""
     @State private var status: PublicationStatus = .help
     @State private var isPosting = false
-    
     @State private var showingDrafts = false
     
     var body: some View {
@@ -29,7 +28,9 @@ struct CreatePublicationView: View {
                         .frame(minHeight: 150)
                     
                     Picker("Estado", selection: $status) {
-                        ForEach(PublicationStatus.allCases, id: \.self) { status in Text(status.displayName) }
+                        ForEach(PublicationStatus.allCases, id: \.self) { status in
+                            Text(status.displayName)
+                        }
                     }
                 }
             }
@@ -38,20 +39,23 @@ struct CreatePublicationView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItemGroup(placement: .cancellationAction) {
-                    Button("Cancelar") { dismiss() }.disabled(isPosting)
+                    Button("Cancelar") { dismiss() }
+                        .disabled(isPosting)
                 }
                 
                 ToolbarItemGroup(placement: .confirmationAction) {
                     Button("Guardar Borrador") {
                         saveDraft()
-                    }.disabled(description.isEmpty || isPosting)
+                    }
+                    .disabled(description.isEmpty || isPosting)
                     
                     if isPosting {
                         ProgressView()
                     } else {
                         Button("Publicar") {
                             Task { await createPublication() }
-                        }.disabled(description.isEmpty)
+                        }
+                        .disabled(description.isEmpty)
                     }
                 }
                 
@@ -64,28 +68,46 @@ struct CreatePublicationView: View {
                     Spacer()
                 }
             }
-            // --- LA CORRECCIÓN ESTÁ AQUÍ ---
             .sheet(isPresented: $showingDrafts) {
-                // Hacemos explícito el nombre del parámetro 'onSelectDraft'
-                // para evitar la ambigüedad.
-                DraftsListView(currentUserId: author.id, onSelectDraft: { selectedDraft in
+                // ✅ CORREGIDO: parámetro `currentUserId` y closure `onSelectDraft`
+                DraftsListView(currentUserId: author.id) { selectedDraft in
                     self.description = selectedDraft.draftDescription
                     self.status = selectedDraft.status
-                })
+                }
             }
         }
     }
     
     private func saveDraft() {
-        let newDraft = PublicationDraft(description: description, status: status, authorUid: author.id)
+        print("DEBUG: Botón 'Guardar Borrador' presionado para el autor: \(author.id)")
+        
+        let newDraft = PublicationDraft(
+            description: description,
+            status: status,
+            authorUid: author.id
+        )
+        
         modelContext.insert(newDraft)
+        
+        do {
+            try modelContext.save()
+            print("DEBUG: ¡Guardado exitoso del borrador!")
+        } catch {
+            print("DEBUG: Error al guardar borrador: \(error.localizedDescription)")
+        }
+        
         dismiss()
     }
     
     private func createPublication() async {
         isPosting = true
         do {
-            try await publicationService.createPublication(description: description, status: status, imageData: nil, author: author)
+            try await publicationService.createPublication(
+                description: description,
+                status: status,
+                imageData: nil,
+                author: author
+            )
             dismiss()
         } catch {
             print("Error al crear la publicación: \(error.localizedDescription)")

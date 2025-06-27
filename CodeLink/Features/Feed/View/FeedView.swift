@@ -7,7 +7,45 @@
 
 import SwiftUI
 
-// --- SUB-VISTA PARA CADA FILA DE LA LISTA ---
+// --- NUEVA SUB-VISTA DEDICADA PARA LAS ACCIONES ---
+// Esta vista aísla la lógica de los botones, solucionando el bug del compilador.
+struct PublicationActionsView: View {
+    @Binding var publication: Publication
+    @Binding var showingComments: Bool
+    
+    // Estado local para el botón de like
+    @State private var youLiked = false
+    private let publicationService = PublicationService()
+
+    var body: some View {
+        // Creamos constantes locales para simplificar al máximo.
+        let likesText = "\(publication.likes) Me gusta"
+        let commentsText = "\(publication.commentCount) Comentar"
+        
+        HStack(spacing: 20) {
+            Spacer()
+            Button {
+                youLiked.toggle()
+                publicationService.likePublication(publicationId: publication.id, currentLikes: publication.likes, shouldLike: youLiked)
+            } label: {
+                Label(likesText, systemImage: youLiked ? "hand.thumbsup.fill" : "hand.thumbsup")
+            }
+            .tint(youLiked ? .blue : .secondary)
+            
+            Button {
+                showingComments = true
+            } label: {
+                Label(commentsText, systemImage: "text.bubble")
+            }
+            Spacer()
+        }
+        .foregroundStyle(.secondary)
+        .buttonStyle(.plain)
+    }
+}
+
+
+// --- SUB-VISTA PARA CADA FILA (AHORA MÁS SIMPLE) ---
 struct PublicationRowView: View {
     @Binding var publication: Publication
     let currentUserId: String
@@ -17,19 +55,12 @@ struct PublicationRowView: View {
     
     @State private var showingEditView = false
     @State private var showingComments = false
-    @State private var youLiked = false
     
     var isAuthor: Bool {
         return publication.authorUid == currentUserId
     }
     
     var body: some View {
-        // --- LA CORRECCIÓN CLAVE ESTÁ AQUÍ ---
-        // Creamos constantes locales dentro del body. Esto simplifica la expresión
-        // para el compilador y soluciona el error.
-        let likesText = "\(publication.likes) Me gusta"
-        let commentsText = "\(publication.commentCount) Comentar"
-        
         VStack(alignment: .leading, spacing: 12) {
             // Cabecera con autor y menú de opciones
             HStack {
@@ -45,9 +76,7 @@ struct PublicationRowView: View {
                         Button { showingEditView = true } label: { Label("Editar", systemImage: "pencil") }
                         Button(role: .destructive) {
                             Task { try? await publicationService.deletePublication(publication) }
-                        } label: {
-                            Label("Eliminar", systemImage: "trash")
-                        }
+                        } label: { Label("Eliminar", systemImage: "trash") }
                     } label: {
                         Image(systemName: "ellipsis").padding(8).background(Color.gray.opacity(0.1)).clipShape(Circle())
                     }
@@ -66,26 +95,8 @@ struct PublicationRowView: View {
             
             Divider()
             
-            // Botones de interacción usando las constantes locales
-            HStack(spacing: 20) {
-                Spacer()
-                Button {
-                    youLiked.toggle()
-                    publicationService.likePublication(publicationId: publication.id, currentLikes: publication.likes, shouldLike: youLiked)
-                } label: {
-                    Label(likesText, systemImage: youLiked ? "hand.thumbsup.fill" : "hand.thumbsup")
-                }
-                .tint(youLiked ? .blue : .secondary)
-                
-                Button {
-                    showingComments = true
-                } label: {
-                    Label(commentsText, systemImage: "text.bubble")
-                }
-                Spacer()
-            }
-            .foregroundStyle(.secondary)
-            .buttonStyle(.plain)
+            // Ahora llamamos a nuestra nueva vista de acciones, mucho más simple.
+            PublicationActionsView(publication: $publication, showingComments: $showingComments)
         }
         .padding(.vertical, 8)
         .sheet(isPresented: $showingEditView) {
@@ -101,7 +112,7 @@ struct PublicationRowView: View {
 }
 
 
-// --- VISTA PRINCIPAL DEL FEED ---
+// --- VISTA PRINCIPAL DEL FEED (SIN CAMBIOS) ---
 struct FeedView: View {
     @StateObject private var viewModel = FeedViewModel()
     @ObservedObject var authService: AuthService

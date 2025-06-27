@@ -23,16 +23,35 @@ struct CodeLinkApp: App {
     
     @StateObject private var authService = AuthService()
     
+    // El contenedor de SwiftData
+    let modelContainer: ModelContainer
+    
+    init() {
+        do {
+            // Creamos el contenedor
+            let container = try ModelContainer(for: PublicationDraft.self)
+            self.modelContainer = container
+            
+            // --- LA CORRECCIÓN ESTÁ AQUÍ ---
+            // Llamamos a la configuración del servicio directamente, SIN el 'Task'.
+            // La función 'configure' está marcada como @MainActor, así que es seguro llamarla aquí.
+            DraftService.shared.configure(with: container)
+            
+        } catch {
+            // Si la base de datos local no se puede crear, la app no puede continuar.
+            fatalError("No se pudo inicializar el ModelContainer.")
+        }
+    }
+    
     var body: some Scene {
         WindowGroup {
-            // --- LA CORRECCIÓN ESTÁ AQUÍ ---
-            // Verificamos si existe el usuario de Firebase, no una variable 'user' genérica.
             if authService.firebaseUser != nil {
                 MainView(authService: authService)
             } else {
                 LoginView(authService: authService)
             }
         }
-        .modelContainer(for: PublicationDraft.self)
+        // Pasamos el contenedor a toda la app para que esté disponible en el entorno.
+        .modelContainer(modelContainer)
     }
 }
