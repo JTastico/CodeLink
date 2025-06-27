@@ -14,6 +14,7 @@ class PublicationService: ObservableObject {
     private var dbRef: DatabaseReference = Database.database().reference()
     private var storageRef: StorageReference = Storage.storage().reference()
     
+    // --- CREAR PUBLICACIÓN ---
     func createPublication(description: String, status: PublicationStatus, imageData: Data?, author: User) async throws {
         var imageURL: URL? = nil
         
@@ -24,8 +25,6 @@ class PublicationService: ObservableObject {
         let publicationRef = dbRef.child("publications").childByAutoId()
         let publicationId = publicationRef.key ?? UUID().uuidString
         
-        // --- CORRECCIÓN CLAVE ---
-        // Creamos el objeto asegurándonos de que todos los campos coinciden con el struct.
         let newPublication = Publication(
             id: publicationId,
             authorUid: author.id,
@@ -33,20 +32,48 @@ class PublicationService: ObservableObject {
             description: description,
             imageURL: imageURL?.absoluteString,
             createdAt: Date().timeIntervalSince1970,
-            status: status
-            // No es necesario poner 'likes: 0' porque el struct ya lo maneja.
+            status: status,
+            likes: 0
         )
         
-        do {
-            let data = try JSONEncoder().encode(newPublication)
-            let json = try JSONSerialization.jsonObject(with: data)
-            try await publicationRef.setValue(json)
-        } catch {
-            throw error
+        let data = try JSONEncoder().encode(newPublication)
+        let json = try JSONSerialization.jsonObject(with: data)
+        try await publicationRef.setValue(json)
+    }
+    
+    // --- ACTUALIZAR PUBLICACIÓN ---
+    func updatePublication(_ publication: Publication) async throws {
+        let publicationRef = dbRef.child("publications").child(publication.id)
+        let data = try JSONEncoder().encode(publication)
+        let json = try JSONSerialization.jsonObject(with: data)
+        try await publicationRef.updateChildValues(json as! [AnyHashable : Any])
+        print("Publicación actualizada exitosamente.")
+    }
+    
+    // --- ELIMINAR PUBLICACIÓN ---
+    func deletePublication(_ publication: Publication) async throws {
+        let publicationRef = dbRef.child("publications").child(publication.id)
+        try await publicationRef.removeValue()
+        print("Publicación eliminada exitosamente.")
+    }
+    
+    // --- LIKE / DISLIKE ---
+    func likePublication(publicationId: String, currentLikes: Int, shouldLike: Bool) {
+        let likesRef = dbRef.child("publications").child(publicationId).child("likes")
+        
+        likesRef.runTransactionBlock { (currentData: MutableData) -> TransactionResult in
+            var likes = currentData.value as? Int ?? currentLikes
+            if shouldLike {
+                likes += 1
+            } else if likes > 0 {
+                likes -= 1
+            }
+            currentData.value = likes
+            return TransactionResult.success(withValue: currentData)
         }
     }
     
-    // --- El resto de tus funciones ---
+    // --- ESCUCHAR PUBLICACIONES ---
     func listenForPublications(completion: @escaping ([Publication]) -> Void) -> DatabaseHandle {
         let publicationsRef = dbRef.child("publications")
         let handle = publicationsRef.observe(.value) { snapshot in
@@ -55,9 +82,12 @@ class PublicationService: ObservableObject {
                 if let publicationData = child.value as? [String: Any] {
                     do {
                         let jsonData = try JSONSerialization.data(withJSONObject: publicationData)
-                        let publication = try JSONDecoder().decode(Publication.self, from: jsonData)
+                        var publication = try JSONDecoder().decode(Publication.self, from: jsonData)
+                        publication.id = child.key
                         publications.append(publication)
-                    } catch { print("Error al decodificar una publicación: \(error)") }
+                    } catch {
+                        print("Error al decodificar una publicación: \(error)")
+                    }
                 }
             }
             completion(publications.sorted(by: { $0.createdAt > $1.createdAt }))
@@ -65,16 +95,67 @@ class PublicationService: ObservableObject {
         return handle
     }
     
+    // --- DETENER ESCUCHA ---
     func removeListener(with handle: DatabaseHandle) {
         let publicationsRef = dbRef.child("publications")
         publicationsRef.removeObserver(withHandle: handle)
     }
     
+    // --- SUBIR IMAGEN ---
     private func uploadPublicationImage(_ imageData: Data) async throws -> URL {
         let imageId = UUID().uuidString
         let imageRef = storageRef.child("publication_images/\(imageId).jpg")
         let _ = try await imageRef.putDataAsync(imageData)
-        let downloadURL = try await imageRef.downloadURL()
-        return downloadURL
+        return try await imageRef.downloadURL()
+    }
+    
+    // --- AÑADIR COMENTARIO ---
+    func addComment(text: String, to publication: Publication, by author: User) async throws {
+        let newComment = Comment(
+            id: "", // Se asignará luego
+            publicationId: publication.id,
+            authorUid: author.id,
+            authorUsername: author.username,
+            text: text,
+            createdAt: Date().timeIntervalSince1970
+        )
+        
+        let commentRef = dbRef.child("comments").child(publication.id).childByAutoId()
+        var commentToSave = newComment
+        commentToSave.id = commentRef.key ?? UUID().uuidString
+        
+        let commentData = try JSONEncoder().encode(commentToSave)
+        let commentJson = try JSONSerialization.jsonObject(with: commentData)
+        try await commentRef.setValue(commentJson)
+        
+        let commentCountRef = dbRef.child("publications").child(publication.id).child("commentCount")
+        try await commentCountRef.runTransactionBlock { currentData in
+            var count = currentData.value as? Int ?? 0
+            count += 1
+            currentData.value = count
+            return TransactionResult.success(withValue: currentData)
+        }
+    }
+    
+    // --- ESCUCHAR COMENTARIOS ---
+    func listenForComments(for publicationId: String, completion: @escaping ([Comment]) -> Void) -> DatabaseHandle {
+        let commentsRef = dbRef.child("comments").child(publicationId)
+        
+        let handle = commentsRef.observe(.value) { snapshot in
+            var comments: [Comment] = []
+            for child in snapshot.children.allObjects as! [DataSnapshot] {
+                if let commentData = child.value as? [String: Any] {
+                    do {
+                        var comment = try JSONDecoder().decode(Comment.self, from: JSONSerialization.data(withJSONObject: commentData))
+                        comment.id = child.key
+                        comments.append(comment)
+                    } catch {
+                        print("Error al decodificar un comentario: \(error)")
+                    }
+                }
+            }
+            completion(comments.sorted(by: { $0.createdAt < $1.createdAt }))
+        }
+        return handle
     }
 }

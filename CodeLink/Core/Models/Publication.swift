@@ -15,15 +15,10 @@ struct Publication: Identifiable, Hashable, Codable {
     
     var description: String
     var imageURL: String?
-    
     let createdAt: TimeInterval
-    
     var status: PublicationStatus
-    
-    // Nos aseguramos de que 'likes' siempre tenga un valor por defecto.
     var likes: Int = 0
-    
-    // Propiedad para formatear la fecha.
+    var commentCount: Int = 0
     var formattedDate: String {
         let date = Date(timeIntervalSince1970: createdAt)
         let formatter = DateFormatter()
