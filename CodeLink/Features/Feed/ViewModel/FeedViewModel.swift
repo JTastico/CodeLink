@@ -5,7 +5,6 @@
 //  Created by Jamil Turpo on 25/06/25.
 //
 
-
 import Foundation
 import FirebaseDatabase
 
@@ -28,7 +27,7 @@ class FeedViewModel: ObservableObject {
     }
     
     func startListeningForPublications() {
-        // Empezamos a escuchar los cambios y actualizamos nuestra lista.
+        // Empezamos a escuchar los cambios y actualizamos nuestra lista de publicaciones.
         publicationsListenerHandle = publicationService.listenForPublications { [weak self] newPublications in
             self?.publications = newPublications
         }

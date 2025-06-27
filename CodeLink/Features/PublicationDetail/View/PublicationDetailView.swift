@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct PublicationDetailView: View {
-    // La publicación que se va a mostrar
     let publication: Publication
     
     var body: some View {
@@ -61,7 +60,6 @@ struct PublicationDetailView: View {
     }
 }
 
-// Vista previa para el lienzo de Xcode
 #Preview {
     // Creamos una publicación de ejemplo para que la vista previa funcione
     let sampleAuthor = User(id: "123", username: "preview_user", fullName: "Preview Name", email: "preview@test.com", profilePictureURL: nil, field: "iOS Developer", aboutMe: nil)

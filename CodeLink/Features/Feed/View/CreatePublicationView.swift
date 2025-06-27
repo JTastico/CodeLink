@@ -5,19 +5,15 @@
 //  Created by Jamil Turpo on 25/06/25.
 //
 
-
 import SwiftUI
 import PhotosUI
 
 struct CreatePublicationView: View {
     @Environment(\.dismiss) var dismiss
     
-    // El servicio para crear la publicación
     private let publicationService = PublicationService()
-    // El usuario que está creando la publicación
     let author: User
     
-    // Estados para los campos del formulario
     @State private var description: String = ""
     @State private var status: PublicationStatus = .help
     @State private var selectedPhoto: PhotosPickerItem?
@@ -26,11 +22,13 @@ struct CreatePublicationView: View {
     
     var body: some View {
         NavigationStack {
+            // --- FORMULARIO CON TODO EL CONTENIDO ---
             Form {
                 Section("Contenido de la Publicación") {
                     // Campo de texto para la descripción
                     TextEditor(text: $description)
                         .frame(minHeight: 150)
+                        .padding(4)
                     
                     // Selector para el estado de la publicación
                     Picker("Estado", selection: $status) {
@@ -52,7 +50,7 @@ struct CreatePublicationView: View {
                     
                     // Botón para abrir el selector de fotos
                     PhotosPicker(selection: $selectedPhoto, matching: .images, photoLibrary: .shared()) {
-                        Label("Seleccionar una foto", systemImage: "photo.fill")
+                        Label("Seleccionar una foto", systemImage: "photo.on.rectangle.angled")
                     }
                 }
             }
@@ -103,4 +101,10 @@ struct CreatePublicationView: View {
             isPosting = false
         }
     }
+}
+
+// Vista previa para el lienzo de Xcode
+#Preview {
+    let sampleUser = User(id: "previewUser", username: "preview", fullName: "Preview User", email: "preview@test.com", profilePictureURL: nil, field: "Previewer", aboutMe: nil)
+    return CreatePublicationView(author: sampleUser)
 }
