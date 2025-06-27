@@ -7,45 +7,7 @@
 
 import SwiftUI
 
-// --- NUEVA SUB-VISTA DEDICADA PARA LAS ACCIONES ---
-// Esta vista aísla la lógica de los botones, solucionando el bug del compilador.
-struct PublicationActionsView: View {
-    @Binding var publication: Publication
-    @Binding var showingComments: Bool
-    
-    // Estado local para el botón de like
-    @State private var youLiked = false
-    private let publicationService = PublicationService()
-
-    var body: some View {
-        // Creamos constantes locales para simplificar al máximo.
-        let likesText = "\(publication.likes) Me gusta"
-        let commentsText = "\(publication.commentCount) Comentar"
-        
-        HStack(spacing: 20) {
-            Spacer()
-            Button {
-                youLiked.toggle()
-                publicationService.likePublication(publicationId: publication.id, currentLikes: publication.likes, shouldLike: youLiked)
-            } label: {
-                Label(likesText, systemImage: youLiked ? "hand.thumbsup.fill" : "hand.thumbsup")
-            }
-            .tint(youLiked ? .blue : .secondary)
-            
-            Button {
-                showingComments = true
-            } label: {
-                Label(commentsText, systemImage: "text.bubble")
-            }
-            Spacer()
-        }
-        .foregroundStyle(.secondary)
-        .buttonStyle(.plain)
-    }
-}
-
-
-// --- SUB-VISTA PARA CADA FILA (AHORA MÁS SIMPLE) ---
+// --- SUB-VISTA PARA CADA FILA DE LA LISTA ---
 struct PublicationRowView: View {
     @Binding var publication: Publication
     let currentUserId: String
@@ -55,12 +17,17 @@ struct PublicationRowView: View {
     
     @State private var showingEditView = false
     @State private var showingComments = false
+    @State private var youLiked = false
     
     var isAuthor: Bool {
         return publication.authorUid == currentUserId
     }
     
     var body: some View {
+        // Creamos constantes locales para simplificar la vista y evitar errores del compilador.
+        let likesText = "\(publication.likes) Me gusta"
+        let commentsText = "\(publication.commentCount) Comentar"
+        
         VStack(alignment: .leading, spacing: 12) {
             // Cabecera con autor y menú de opciones
             HStack {
@@ -95,8 +62,38 @@ struct PublicationRowView: View {
             
             Divider()
             
-            // Ahora llamamos a nuestra nueva vista de acciones, mucho más simple.
-            PublicationActionsView(publication: $publication, showingComments: $showingComments)
+            // Botones de interacción
+            HStack(spacing: 20) {
+                Spacer()
+                // --- BOTÓN "ME GUSTA" CON ANIMACIÓN ---
+                Button {
+                    // La lógica del like no cambia
+                    youLiked.toggle()
+                    publicationService.likePublication(publicationId: publication.id, currentLikes: publication.likes, shouldLike: youLiked)
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: youLiked ? "hand.thumbsup.fill" : "hand.thumbsup")
+                            // --- 1. Animación de Escala ---
+                            // El ícono crece un 20% cuando 'youLiked' es verdadero.
+                            .scaleEffect(youLiked ? 1.2 : 1.0)
+                        Text(likesText)
+                    }
+                }
+                .tint(youLiked ? .blue : .secondary)
+                // --- 2. Modificador de Animación ---
+                // Le decimos a SwiftUI que anime cualquier cambio que dependa de 'youLiked'
+                // usando una animación de resorte (spring) para un efecto de "rebote".
+                .animation(.spring(response: 0.4, dampingFraction: 0.5), value: youLiked)
+                
+                Button {
+                    showingComments = true
+                } label: {
+                    Label(commentsText, systemImage: "text.bubble")
+                }
+                Spacer()
+            }
+            .foregroundStyle(.secondary)
+            .buttonStyle(.plain)
         }
         .padding(.vertical, 8)
         .sheet(isPresented: $showingEditView) {
