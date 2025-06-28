@@ -16,6 +16,8 @@ class AuthService: ObservableObject {
     
     @Published var firebaseUser: FirebaseAuth.User?
     @Published var appUser: User?
+    @Published var isLoading = false
+    @Published var authError: String?
     
     private var authStateHandle: AuthStateDidChangeListenerHandle?
     private var userProfileHandle: DatabaseHandle?
@@ -110,40 +112,110 @@ class AuthService: ObservableObject {
 
     // MARK: - Inicio de Sesión con Google
     func signInWithGoogle() {
-        guard let clientID = FirebaseApp.app()?.options.clientID else { return }
+        isLoading = true
+        authError = nil
+        
+        guard let clientID = FirebaseApp.app()?.options.clientID else {
+            isLoading = false
+            authError = "Error al obtener el ID de cliente"
+            return
+        }
+        
         let config = GIDConfiguration(clientID: clientID)
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = windowScene.windows.first,
-              let rootViewController = window.rootViewController else { return }
+              let rootViewController = window.rootViewController else {
+            isLoading = false
+            authError = "Error al inicializar la ventana de autenticación"
+            return
+        }
 
         GIDSignIn.sharedInstance.configuration = config
         GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController) { [weak self] result, error in
-            guard error == nil, let user = result?.user, let idToken = user.idToken?.tokenString else { return }
-            let credential = GoogleAuthProvider.credential(withIDToken: idToken, accessToken: user.accessToken.tokenString)
-            self?.authenticate(with: credential)
-        }
-    }
-
-
-    func signInWithGitHub() {
-        let provider = OAuthProvider(providerID: "github.com")
-        provider.getCredentialWith(nil) { [weak self] credential, error in
-            if let error = error {
-                print("GitHub login error: \(error.localizedDescription)")
-                return
-            }
-            
-            if let credential = credential {
+            DispatchQueue.main.async {
+                if let error = error {
+                    self?.isLoading = false
+                    self?.authError = "Error de Google: \(error.localizedDescription)"
+                    return
+                }
+                
+                guard let user = result?.user,
+                      let idToken = user.idToken?.tokenString else {
+                    self?.isLoading = false
+                    self?.authError = "Error al obtener las credenciales de usuario"
+                    return
+                }
+                
+                let credential = GoogleAuthProvider.credential(
+                    withIDToken: idToken,
+                    accessToken: user.accessToken.tokenString
+                )
+                
                 self?.authenticate(with: credential)
             }
         }
     }
 
 
+    func signInWithGitHub() {
+        isLoading = true
+        authError = nil
+        
+        let provider = OAuthProvider(providerID: "github.com")
+        provider.scopes = ["user:email", "read:user"]
+        
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first,
+              let rootViewController = window.rootViewController else {
+            isLoading = false
+            authError = "Error al inicializar la ventana de autenticación"
+            return
+        }
+        
+        provider.getCredentialWith(nil) { [weak self] credential, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    self?.isLoading = false
+                    self?.authError = "Error de GitHub: \(error.localizedDescription)"
+                    return
+                }
+                
+                if let credential = credential {
+                    Auth.auth().signIn(with: credential) { [weak self] authResult, error in
+                        DispatchQueue.main.async {
+                            self?.isLoading = false
+                            
+                            if let error = error {
+                                self?.authError = "Error de autenticación: \(error.localizedDescription)"
+                                return
+                            }
+                            
+                            if let user = authResult?.user {
+                                self?.firebaseUser = user
+                                self?.createUserProfileIfNeeded(for: user.uid)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
     private func authenticate(with credential: AuthCredential) {
-        Auth.auth().signIn(with: credential) { _, error in
-            if let error = error {
-                print("Error al autenticar en Firebase: \(error.localizedDescription)")
+        Auth.auth().signIn(with: credential) { [weak self] authResult, error in
+            DispatchQueue.main.async {
+                self?.isLoading = false
+                
+                if let error = error {
+                    self?.authError = "Error al autenticar en Firebase: \(error.localizedDescription)"
+                    return
+                }
+                
+                if let user = authResult?.user {
+                    self?.firebaseUser = user
+                    self?.createUserProfileIfNeeded(for: user.uid)
+                }
             }
         }
     }

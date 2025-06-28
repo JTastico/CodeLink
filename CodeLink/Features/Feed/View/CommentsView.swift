@@ -18,11 +18,7 @@ struct CommentsView: View {
     @FocusState private var isTextFieldFocused: Bool
     @State private var replyingTo: Comment?
     
-    // Paleta de colores personalizada
-    private let darkBlue = Color(red: 0.1, green: 0.15, blue: 0.25)
-    private let lightBlue = Color(red: 0.4, green: 0.7, blue: 1.0)
-    private let accentBlue = Color(red: 0.2, green: 0.6, blue: 0.9)
-    private let softBlack = Color(red: 0.05, green: 0.05, blue: 0.1)
+    @State private var isAnimating = false
     
     init(publication: Publication, currentUser: User) {
         self.publication = publication
@@ -30,54 +26,67 @@ struct CommentsView: View {
         _viewModel = StateObject(wrappedValue: CommentsViewModel(publicationId: publication.id))
     }
     
-    var body: some View {
-        VStack(spacing: 0) {
-            // Header mejorado
-            headerSection
-            
-            // Lista de comentarios
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 20) {
-                    ForEach(viewModel.commentThreads) { thread in
-                        VStack(alignment: .leading, spacing: 12) {
-                            // Comentario padre
-                            CommentRow(
-                                comment: thread.parent,
-                                replyingTo: $replyingTo,
-                                isReply: false
-                            )
-                            
-                            // Respuestas
-                            ForEach(thread.replies) { reply in
-                                CommentRow(
-                                    comment: reply,
-                                    replyingTo: $replyingTo,
-                                    isReply: true
-                                )
-                                .padding(.leading, 24)
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 16)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(darkBlue.opacity(0.3))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .stroke(lightBlue.opacity(0.2), lineWidth: 1)
-                                )
-                        )
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 20)
+    // Función para iniciar las animaciones
+    private func setupAnimations() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            withAnimation {
+                isAnimating = true
             }
-            .background(softBlack)
-            
-            // Campo de entrada mejorado
-            inputSection
         }
-        .background(softBlack)
+    }
+    
+    var body: some View {
+        ZStack {
+            // Fondo principal
+            Color.primaryGradient
+                .ignoresSafeArea()
+                .opacity(isAnimating ? 1.0 : 0.8)
+                .animation(.easeInOut(duration: 1.5), value: isAnimating)
+            
+            VStack(spacing: 0) {
+                // Header mejorado
+                headerSection
+                
+                // Lista de comentarios
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 20) {
+                        ForEach(viewModel.commentThreads) { thread in
+                            VStack(alignment: .leading, spacing: 12) {
+                                // Comentario padre
+                                CommentRow(
+                                    comment: thread.parent,
+                                    replyingTo: $replyingTo,
+                                    isReply: false
+                                )
+                                
+                                // Respuestas
+                                ForEach(thread.replies) { reply in
+                                    CommentRow(
+                                        comment: reply,
+                                        replyingTo: $replyingTo,
+                                        isReply: true
+                                    )
+                                    .padding(.leading, 24)
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 16)
+                            .glassCard(cornerRadius: 16)
+                            .scaleEffect(isAnimating ? 1.01 : 1.0)
+                            .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isAnimating)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 20)
+                }
+                
+                // Campo de entrada mejorado
+                inputSection
+            }
+        }
+        .onAppear {
+            setupAnimations()
+        }
     }
     
     private var headerSection: some View {
@@ -86,44 +95,42 @@ struct CommentsView: View {
                 Text("Comentarios")
                     .font(.title2)
                     .fontWeight(.bold)
-                    .foregroundColor(.white)
+                    .foregroundColor(Color.primaryTextColor)
                 
                 Spacer()
                 
                 Text("\(viewModel.commentThreads.count)")
                     .font(.subheadline)
                     .fontWeight(.medium)
-                    .foregroundColor(lightBlue)
+                    .foregroundColor(Color.accentBlue)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .background(
                         Capsule()
-                            .fill(darkBlue)
+                            .fill(Color.glassMorphism)
                             .overlay(
                                 Capsule()
-                                    .stroke(lightBlue.opacity(0.3), lineWidth: 1)
+                                    .stroke(Color.accentBlue.opacity(0.3), lineWidth: 1)
                             )
                     )
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
-            .background(
-                LinearGradient(
-                    colors: [darkBlue, darkBlue.opacity(0.8)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
+            .glassCard(cornerRadius: 0)
+            .scaleEffect(isAnimating ? 1.01 : 1.0)
+            .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isAnimating)
             
             Rectangle()
                 .fill(
                     LinearGradient(
-                        colors: [lightBlue.opacity(0.6), accentBlue.opacity(0.4)],
+                        colors: [Color.accentBlue.opacity(0.6), Color.vibrantBlue.opacity(0.4)],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
                 )
                 .frame(height: 2)
+                .opacity(isAnimating ? 0.8 : 0.4)
+                .animation(.easeInOut(duration: 2.5).repeatForever(autoreverses: true), value: isAnimating)
         }
     }
     
@@ -132,29 +139,31 @@ struct CommentsView: View {
             Rectangle()
                 .fill(
                     LinearGradient(
-                        colors: [lightBlue.opacity(0.4), accentBlue.opacity(0.3)],
+                        colors: [Color.accentBlue.opacity(0.6), Color.vibrantBlue.opacity(0.4)],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
                 )
                 .frame(height: 1)
+                .opacity(isAnimating ? 0.8 : 0.4)
+                .animation(.easeInOut(duration: 2.5).repeatForever(autoreverses: true), value: isAnimating)
             
             VStack(alignment: .leading, spacing: 12) {
                 // Indicador de respuesta
                 if let replyingToComment = replyingTo {
                     HStack {
                         Image(systemName: "arrowshape.turn.up.left.fill")
-                            .foregroundColor(lightBlue)
+                            .foregroundColor(Color.accentBlue)
                             .font(.caption)
                         
                         Text("Respondiendo a")
                             .font(.caption)
-                            .foregroundColor(.white.opacity(0.7))
+                            .foregroundColor(Color.primaryTextColor.opacity(0.7))
                         
                         Text("@\(replyingToComment.authorUsername)")
                             .font(.caption)
                             .fontWeight(.semibold)
-                            .foregroundColor(lightBlue)
+                            .foregroundColor(Color.accentBlue)
                         
                         Spacer()
                         
@@ -164,7 +173,7 @@ struct CommentsView: View {
                             }
                         } label: {
                             Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.white.opacity(0.6))
+                                .foregroundColor(Color.primaryTextColor.opacity(0.6))
                                 .font(.caption)
                         }
                     }
@@ -172,13 +181,15 @@ struct CommentsView: View {
                     .padding(.vertical, 8)
                     .background(
                         RoundedRectangle(cornerRadius: 12)
-                            .fill(darkBlue.opacity(0.6))
+                            .fill(Color.glassMorphism)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 12)
-                                    .stroke(lightBlue.opacity(0.3), lineWidth: 1)
+                                    .stroke(Color.accentBlue.opacity(0.3), lineWidth: 1)
                             )
                     )
                     .transition(.opacity.combined(with: .move(edge: .top)))
+                    .scaleEffect(isAnimating ? 1.02 : 1.0)
+                    .animation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true), value: isAnimating)
                 }
                 
                 // Campo de texto
@@ -189,15 +200,15 @@ struct CommentsView: View {
                         axis: .vertical
                     )
                     .textFieldStyle(.plain)
-                    .foregroundColor(.white)
+                    .foregroundColor(Color.primaryTextColor)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                     .background(
                         RoundedRectangle(cornerRadius: 20)
-                            .fill(darkBlue.opacity(0.8))
+                            .fill(Color.glassMorphism)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 20)
-                                    .stroke(isTextFieldFocused ? lightBlue : Color.white.opacity(0.2), lineWidth: 1.5)
+                                    .stroke(isTextFieldFocused ? Color.accentBlue : Color.primaryTextColor.opacity(0.2), lineWidth: 1.5)
                             )
                     )
                     .focused($isTextFieldFocused)
@@ -208,7 +219,7 @@ struct CommentsView: View {
                     } label: {
                         Image(systemName: "paperplane.fill")
                             .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.white)
+                            .foregroundColor(Color.primaryTextColor)
                             .frame(width: 44, height: 44)
                             .background(
                                 Circle()
@@ -216,7 +227,7 @@ struct CommentsView: View {
                                         LinearGradient(
                                             colors: newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                                                 ? [Color.gray.opacity(0.3), Color.gray.opacity(0.2)]
-                                                : [lightBlue, accentBlue],
+                                                : [Color.accentBlue, Color.vibrantBlue],
                                             startPoint: .topLeading,
                                             endPoint: .bottomTrailing
                                         )
@@ -224,12 +235,14 @@ struct CommentsView: View {
                                     .shadow(
                                         color: newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                                             ? .clear
-                                            : lightBlue.opacity(0.4),
+                                            : Color.accentBlue.opacity(0.4),
                                         radius: 8,
                                         x: 0,
                                         y: 4
                                     )
                             )
+                            .scaleEffect(isAnimating ? 1.05 : 1.0)
+                            .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: isAnimating)
                     }
                     .disabled(newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .scaleEffect(newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.9 : 1.0)
@@ -239,11 +252,7 @@ struct CommentsView: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
             .background(
-                LinearGradient(
-                    colors: [darkBlue.opacity(0.9), softBlack],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
+                Color.accentGradient
             )
         }
     }
@@ -274,85 +283,62 @@ struct CommentRow: View {
     let comment: Comment
     @Binding var replyingTo: Comment?
     let isReply: Bool
-    
-    // Paleta de colores
-    private let lightBlue = Color(red: 0.4, green: 0.7, blue: 1.0)
-    private let accentBlue = Color(red: 0.2, green: 0.6, blue: 0.9)
-    private let darkBlue = Color(red: 0.1, green: 0.15, blue: 0.25)
-    
+    @State private var isAnimating = false
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Header del comentario
-            HStack(alignment: .center, spacing: 8) {
-                // Avatar placeholder
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [lightBlue, accentBlue],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: isReply ? 28 : 32, height: isReply ? 28 : 32)
-                    .overlay(
-                        Text(String(comment.authorUsername.prefix(1)).uppercased())
-                            .font(.system(size: isReply ? 12 : 14, weight: .bold))
-                            .foregroundColor(.white)
-                    )
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(comment.authorUsername)
-                        .font(isReply ? .caption : .subheadline)
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
-                    
+        HStack(alignment: .top, spacing: 12) {
+            // Avatar corregido
+            AvatarView(
+                imageURL: comment.profileImageURL,
+                size: 36
+            )
+            .scaleEffect(isAnimating ? 1.05 : 1.0)
+            .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isAnimating)
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack {
+                    Text(comment.username)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(Color.accentBlue)
+
+                    Text("·")
+                        .foregroundColor(Color.secondaryTextColor)
+
                     Text(comment.formattedDate)
-                        .font(.caption2)
-                        .foregroundColor(.white.opacity(0.6))
-                }
-                
-                Spacer()
-                
-                if isReply {
-                    Image(systemName: "arrowshape.turn.up.left.fill")
-                        .font(.caption2)
-                        .foregroundColor(lightBlue.opacity(0.7))
-                }
-            }
-            
-            // Contenido del comentario
-            Text(comment.text)
-                .font(isReply ? .caption : .callout)
-                .foregroundColor(.white.opacity(0.9))
-                .lineLimit(nil)
-                .multilineTextAlignment(.leading)
-            
-            // Botón de responder
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    replyingTo = comment
-                }
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrowshape.turn.up.left")
-                        .font(.caption2)
-                    Text("Responder")
                         .font(.caption)
-                        .fontWeight(.medium)
+                        .foregroundColor(Color.secondaryTextColor)
+
+                    Spacer()
                 }
-                .foregroundColor(lightBlue.opacity(0.8))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(
-                    Capsule()
-                        .fill(darkBlue.opacity(0.6))
-                        .overlay(
-                            Capsule()
-                                .stroke(lightBlue.opacity(0.3), lineWidth: 0.5)
-                        )
-                )
+
+                Text(comment.text)
+                    .font(.system(size: 15))
+                    .foregroundColor(Color.primaryTextColor)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 4)
+
+                Button(action: {
+                    replyingTo = comment
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrowshape.turn.up.left")
+                            .font(.caption2)
+                        Text("Responder")
+                            .font(.caption)
+                    }
+                    .foregroundColor(Color.accentBlue.opacity(0.8))
+                    .padding(.top, 4)
+                }
+                .buttonStyle(SecondaryButtonStyle())
             }
-            .padding(.top, 4)
+        }
+        .padding(.leading, isReply ? 8 : 0)
+        .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.5).delay(0.2)) {
+                isAnimating = true
+            }
         }
     }
 }

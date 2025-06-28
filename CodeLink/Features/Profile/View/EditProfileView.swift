@@ -16,17 +16,9 @@ struct EditProfileView: View {
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var selectedPhotoData: Data?
     @State private var isSaving = false
+    @State private var isAnimating = false
 
     let fields = ["iOS Developer", "Android Developer", "Web Developer", "Backend Developer", "UI/UX Designer", "Project Manager", "QA Tester", "Tech Enthusiast"]
-
-    // Paleta de colores consistente
-    private let primaryDark = Color(red: 0.05, green: 0.08, blue: 0.15)
-    private let secondaryDark = Color(red: 0.08, green: 0.12, blue: 0.20)
-    private let accentBlue = Color(red: 0.20, green: 0.50, blue: 0.85)
-    private let lightBlue = Color(red: 0.40, green: 0.70, blue: 0.95)
-    private let pureBlack = Color(red: 0.02, green: 0.02, blue: 0.05)
-    private let softWhite = Color.white.opacity(0.95)
-    private let glass = Color.white.opacity(0.08)
 
 
     init(user: User, authService: AuthService) {
@@ -38,8 +30,10 @@ struct EditProfileView: View {
         NavigationStack {
             ZStack {
                 // Fondo gradiente
-                LinearGradient(colors: [pureBlack, primaryDark], startPoint: .topLeading, endPoint: .bottomTrailing)
+                Color.primaryGradient
                     .ignoresSafeArea()
+                    .opacity(isAnimating ? 1.0 : 0.8)
+                    .animation(.easeInOut(duration: 1.5), value: isAnimating)
 
                 ScrollView {
                     VStack(spacing: 32) {
@@ -49,6 +43,9 @@ struct EditProfileView: View {
                     }
                     .padding(.horizontal, 24)
                     .padding(.top, 32)
+                }
+                .onAppear {
+                    setupAnimations()
                 }
 
                 // Botón de guardar flotante
@@ -67,13 +64,18 @@ struct EditProfileView: View {
                 ToolbarItem(placement: .principal) {
                     Text("Editar Perfil")
                         .font(.title2.bold())
-                        .foregroundColor(Color.white.opacity(0.95)) // softWhite
+                        .foregroundColor(Color.primaryTextColor)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.deepBackground, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") { dismiss() }.disabled(isSaving)
+                    Button("Cancelar") { dismiss() }
+                    .foregroundColor(Color.accentBlue)
+                    .disabled(isSaving)
                 }
             }
             .onChange(of: selectedPhoto) {
@@ -93,104 +95,112 @@ struct EditProfileView: View {
             if let selectedPhotoData, let uiImage = UIImage(data: selectedPhotoData) {
                 Image(uiImage: uiImage)
                     .resizable().scaledToFill().frame(width: 120, height: 120).clipShape(Circle())
+                    .overlay(Circle().stroke(Color.accentBlue, lineWidth: 2))
+                    .shadow(color: Color.accentBlue.opacity(0.5), radius: 10, x: 0, y: 5)
+                    .scaleEffect(isAnimating ? 1.05 : 1.0)
+                    .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isAnimating)
             } else {
-                AsyncImage(url: URL(string: user.profilePictureURL ?? "")) { image in
-                    image.resizable().scaledToFill().frame(width: 120, height: 120).clipShape(Circle())
-                } placeholder: {
-                    Image(systemName: "person.crop.circle.fill")
-                        .font(.system(size: 100))
-                        .foregroundStyle(.gray)
-                }
+                AvatarView(
+                    imageURL: user.profilePictureURL,
+                    size: 120
+                )
+
+                .scaleEffect(isAnimating ? 1.05 : 1.0)
+                .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isAnimating)
             }
 
             PhotosPicker(selection: $selectedPhoto, matching: .images, photoLibrary: .shared()) {
-                Text("Cambiar Foto")
-                    .font(.subheadline)
-                    .foregroundColor(lightBlue)
-                    .underline()
+                Text("Cambiar foto")
+                    .font(.subheadline.bold())
+                    .foregroundColor(Color.primaryTextColor)
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 16)
+                    .background(
+                        Capsule()
+                            .fill(Color.glassMorphism)
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.accentBlue.opacity(0.5), lineWidth: 1)
+                            )
+                    )
             }
+            .buttonStyle(SecondaryButtonStyle())
         }
         .padding()
         .frame(maxWidth: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(secondaryDark.opacity(0.5))
-                .background(RoundedRectangle(cornerRadius: 20).fill(glass))
-                .overlay(RoundedRectangle(cornerRadius: 20).stroke(lightBlue.opacity(0.2), lineWidth: 1))
-        )
+        .glassCard(cornerRadius: 20)
+        .scaleEffect(isAnimating ? 1.01 : 1.0)
+        .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isAnimating)
     }
 
     private var publicFieldsSection: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Datos Públicos")
                 .font(.headline)
-                .foregroundColor(softWhite)
+                .foregroundColor(Color.primaryTextColor)
 
             VStack(spacing: 16) {
                 TextField("Nombre de Usuario", text: $user.username)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .padding()
-                    .background(roundedField)
+                    .foregroundColor(Color.primaryTextColor)
+                    .background(Color.glassMorphism)
+                    .cornerRadius(10)
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.accentBlue.opacity(0.3), lineWidth: 1))
 
                 TextField("Nombre Completo", text: $user.fullName)
                     .padding()
-                    .background(roundedField)
+                    .foregroundColor(Color.primaryTextColor)
+                    .background(Color.glassMorphism)
+                    .cornerRadius(10)
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.accentBlue.opacity(0.3), lineWidth: 1))
 
                 Picker("Especialidad", selection: $user.field) {
                     ForEach(fields, id: \.self) { Text($0) }
                 }
                 .pickerStyle(MenuPickerStyle())
                 .padding()
-                .background(roundedField)
+                .foregroundColor(Color.primaryTextColor)
+                .background(Color.glassMorphism)
+                .cornerRadius(10)
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.accentBlue.opacity(0.3), lineWidth: 1))
             }
         }
         .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(secondaryDark.opacity(0.5))
-                .background(RoundedRectangle(cornerRadius: 20).fill(glass))
-                .overlay(RoundedRectangle(cornerRadius: 20).stroke(lightBlue.opacity(0.2), lineWidth: 1))
-        )
+        .glassCard(cornerRadius: 20)
+        .scaleEffect(isAnimating ? 1.01 : 1.0)
+        .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isAnimating)
     }
 
     private var aboutMeSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Acerca de mí")
                 .font(.headline)
-                .foregroundColor(softWhite)
+                .foregroundColor(Color.primaryTextColor)
 
             ZStack(alignment: .topLeading) {
                 if user.aboutMe?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true {
                     Text("Escribe algo sobre ti...")
-                        .foregroundColor(softWhite.opacity(0.4))
+                        .foregroundColor(Color.secondaryTextColor.opacity(0.6))
                         .padding(16)
                 }
 
                 TextEditor(text: $user.aboutMe.replacingNilWithDefault())
                     .padding(14)
-                    .foregroundColor(softWhite)
+                    .foregroundColor(Color.primaryTextColor)
                     .background(Color.clear)
                     .scrollContentBackground(.hidden)
             }
             .frame(minHeight: 120)
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(secondaryDark.opacity(0.5))
-                    .background(RoundedRectangle(cornerRadius: 20).fill(glass))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20)
-                            .stroke(lightBlue.opacity(0.2), lineWidth: 1)
-                    )
-            )
+            .background(Color.glassMorphism)
+            .cornerRadius(10)
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.accentBlue.opacity(0.3), lineWidth: 1))
         }
         .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(secondaryDark.opacity(0.5))
-                .background(RoundedRectangle(cornerRadius: 20).fill(glass))
-                .overlay(RoundedRectangle(cornerRadius: 20).stroke(lightBlue.opacity(0.2), lineWidth: 1))
-        )
+        .glassCard(cornerRadius: 20)
+        .scaleEffect(isAnimating ? 1.01 : 1.0)
+        .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isAnimating)
     }
 
     private var saveButton: some View {
@@ -198,7 +208,7 @@ struct EditProfileView: View {
             HStack {
                 if isSaving {
                     ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: softWhite))
+                        .progressViewStyle(CircularProgressViewStyle(tint: Color.primaryTextColor))
                         .scaleEffect(0.9)
                 } else {
                     Image(systemName: "checkmark.circle.fill")
@@ -208,29 +218,30 @@ struct EditProfileView: View {
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 14)
-            .foregroundColor(softWhite)
+            .foregroundColor(Color.primaryTextColor)
             .background(
                 Capsule()
-                    .fill(
-                        LinearGradient(colors: [lightBlue, accentBlue], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    )
-                    .shadow(color: lightBlue.opacity(0.3), radius: 10, x: 0, y: 6)
+                    .fill(Color.accentGradient)
+                    .shadow(color: Color.accentBlue.opacity(0.3), radius: 10, x: 0, y: 6)
             )
         }
+        .buttonStyle(PrimaryButtonStyle())
         .disabled(isSaving)
         .scaleEffect(isSaving ? 0.95 : 1.0)
         .animation(.easeInOut(duration: 0.2), value: isSaving)
+        .scaleEffect(isAnimating ? 1.05 : 1.0)
+        .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isAnimating)
     }
 
-    private var roundedField: some View {
-        RoundedRectangle(cornerRadius: 16)
-            .fill(secondaryDark.opacity(0.4))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(lightBlue.opacity(0.15), lineWidth: 1)
-            )
-    }
+    // Eliminado roundedField ya que ahora usamos los estilos del sistema de diseño
 
+    // MARK: - Animaciones
+    private func setupAnimations() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            isAnimating = true
+        }
+    }
+    
     // MARK: - Guardado
     func saveProfile() async {
         isSaving = true

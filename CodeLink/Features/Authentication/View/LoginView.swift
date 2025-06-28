@@ -9,6 +9,8 @@ import SwiftUI
 
 struct LoginView: View {
     @ObservedObject var authService: AuthService
+    @State private var isAnimating = false
+    @State private var showError = false
     
     // Colores del diseño general
     private let primaryDark = Color(red: 0.05, green: 0.08, blue: 0.15)
@@ -20,13 +22,39 @@ struct LoginView: View {
     
     var body: some View {
         ZStack {
-            // Fondo degradado
+            // Fondo degradado animado
             LinearGradient(
                 colors: [primaryDark, secondaryDark],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
+            .overlay(
+                GeometryReader { geometry in
+                    Circle()
+                        .fill(lightBlue.opacity(0.1))
+                        .frame(width: geometry.size.width * 0.8)
+                        .position(
+                            x: geometry.size.width * 0.8,
+                            y: geometry.size.height * 0.2
+                        )
+                        .blur(radius: 60)
+                        .scaleEffect(isAnimating ? 1.2 : 0.8)
+                }
+            )
+            .overlay(
+                GeometryReader { geometry in
+                    Circle()
+                        .fill(accentBlue.opacity(0.1))
+                        .frame(width: geometry.size.width * 0.6)
+                        .position(
+                            x: geometry.size.width * 0.2,
+                            y: geometry.size.height * 0.8
+                        )
+                        .blur(radius: 60)
+                        .scaleEffect(isAnimating ? 0.8 : 1.2)
+                }
+            )
 
             VStack(spacing: 32) {
                 Spacer()
@@ -36,6 +64,8 @@ struct LoginView: View {
                         .font(.system(size: 72))
                         .foregroundStyle(lightBlue)
                         .shadow(color: lightBlue.opacity(0.4), radius: 8, x: 0, y: 4)
+                        .rotationEffect(Angle(degrees: isAnimating ? 360 : 0))
+                        .animation(Animation.linear(duration: 20).repeatForever(autoreverses: false), value: isAnimating)
 
                     Text("CodeLink")
                         .font(.largeTitle.bold())
@@ -50,7 +80,9 @@ struct LoginView: View {
 
                 VStack(spacing: 20) {
                     Button(action: {
-                        authService.signInWithGoogle()
+                        withAnimation(.spring()) {
+                            authService.signInWithGoogle()
+                        }
                     }) {
                         HStack(spacing: 12) {
                             Image(systemName: "globe")
@@ -72,7 +104,9 @@ struct LoginView: View {
                     .shadow(color: lightBlue.opacity(0.2), radius: 5, x: 0, y: 4)
 
                     Button(action: {
-                        authService.signInWithGitHub()
+                        withAnimation(.spring()) {
+                            authService.signInWithGitHub()
+                        }
                     }) {
                         HStack(spacing: 12) {
                             Image(systemName: "chevron.left.slash.chevron.right")
@@ -99,7 +133,34 @@ struct LoginView: View {
                 Spacer()
             }
             .padding(.horizontal, 24)
-            .animation(.easeInOut(duration: 0.5), value: UUID()) // Fuerza animación suave
+            .opacity(authService.isLoading ? 0.6 : 1)
+            .blur(radius: authService.isLoading ? 3 : 0)
+            .overlay {
+                if authService.isLoading {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: lightBlue))
+                        .scaleEffect(1.5)
+                }
+            }
+        }
+        .alert("Error de Autenticación", isPresented: Binding(
+            get: { authService.authError != nil },
+            set: { if !$0 { authService.authError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            if let error = authService.authError {
+                Text(error)
+            }
+        }
+        .onAppear {
+            withAnimation(
+                Animation
+                    .easeInOut(duration: 3)
+                    .repeatForever(autoreverses: true)
+            ) {
+                isAnimating = true
+            }
         }
     }
 }

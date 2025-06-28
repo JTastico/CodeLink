@@ -9,6 +9,8 @@ import Foundation
 
 struct Comment: Identifiable, Codable, Hashable {
     var id: String = UUID().uuidString
+    var username: String
+    var profileImageURL: String?
     let publicationId: String
     let authorUid: String
     let authorUsername: String

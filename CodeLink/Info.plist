@@ -10,6 +10,16 @@
 				<string>com.googleusercontent.apps.139854124636-beagpqk2u7hi1ok96dq1llbjshdnunb5</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>codelink-93493</string>
+			</array>
+			<key>CFBundleURLName</key>
+			<string>com.jamil.turpo.CodeLink</string>
+		</dict>
 	</array>
+	<key>GIDClientID</key>
+	<string>139854124636-beagpqk2u7hi1ok96dq1llbjshdnunb5.apps.googleusercontent.com</string>
 </dict>
 </plist>

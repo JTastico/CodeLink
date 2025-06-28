@@ -11,22 +11,15 @@ struct ProfileView: View {
     @ObservedObject var authService: AuthService
     @State private var showingEditProfile = false
     
-    // Paleta de colores
-    private let primaryDark = Color(red: 0.08, green: 0.10, blue: 0.18)
-    private let glassMorphism = Color.white.opacity(0.08)
-    private let accentBlue = Color(red: 0.20, green: 0.50, blue: 0.85)
-    private let softWhite = Color.white.opacity(0.95)
-    private let pureBlack = Color(red: 0.02, green: 0.02, blue: 0.05)
+    @State private var isAnimating = false
 
     var body: some View {
         NavigationStack {
             ZStack {
-                LinearGradient(
-                    colors: [pureBlack, primaryDark],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
+                Color.primaryGradient
+                    .ignoresSafeArea()
+                    .opacity(isAnimating ? 1.0 : 0.8)
+                    .animation(.easeInOut(duration: 1.5), value: isAnimating)
 
                 if let user = authService.appUser {
                     ScrollView {
@@ -39,7 +32,7 @@ struct ProfileView: View {
                                 glassSection(title: "Acerca de mí") {
                                     Text(aboutMe)
                                         .font(.body)
-                                        .foregroundColor(softWhite.opacity(0.9))
+                                        .foregroundColor(Color.primaryTextColor)
                                 }
                             }
 
@@ -47,15 +40,15 @@ struct ProfileView: View {
                                 Button("Editar Perfil") {
                                     showingEditProfile = true
                                 }
-                                .font(.headline)
-                                .foregroundColor(accentBlue)
+                                .buttonStyle(PrimaryButtonStyle())
                             }
 
                             glassSection(title: "Cuenta") {
                                 Button("Cerrar Sesión", role: .destructive) {
                                     authService.signOut()
                                 }
-                                .font(.headline)
+                                .buttonStyle(SecondaryButtonStyle())
+                                .foregroundColor(.red)
                             }
                         }
                         .padding(.horizontal, 24)
@@ -71,12 +64,15 @@ struct ProfileView: View {
                 ToolbarItem(placement: .principal) {
                     Text("Perfil")
                         .font(.title2.bold())
-                        .foregroundColor(Color.white.opacity(0.95)) // softWhite
+                        .foregroundColor(Color.primaryTextColor)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showingEditProfile) {
                 EditProfileView(user: authService.appUser!, authService: authService)
+            }
+            .onAppear {
+                setupAnimations()
             }
         }
     }
@@ -84,48 +80,30 @@ struct ProfileView: View {
     @ViewBuilder
     private func profileHeader(user: User) -> some View {
         VStack(spacing: 16) {
-            AsyncImage(url: URL(string: user.profilePictureURL ?? "")) { image in
-                image.resizable()
-                     .aspectRatio(contentMode: .fill)
-                     .frame(width: 110, height: 110)
-                     .clipShape(Circle())
-                     .overlay(Circle().stroke(accentBlue, lineWidth: 2))
-                     .shadow(color: accentBlue.opacity(0.4), radius: 10, x: 0, y: 4)
-            } placeholder: {
-                Image(systemName: "person.crop.circle.fill")
-                    .font(.system(size: 110))
-                    .foregroundStyle(.gray.opacity(0.3))
-            }
+            AvatarView(imageURL: user.profilePictureURL, size: 110, showBorder: true)
+                .scaleEffect(isAnimating ? 1.05 : 1.0)
+                .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: isAnimating)
 
             VStack(spacing: 4) {
                 Text(user.fullName)
                     .font(.title2)
                     .fontWeight(.bold)
-                    .foregroundColor(softWhite)
+                    .foregroundColor(Color.primaryTextColor)
 
                 Text("@\(user.username)")
                     .font(.callout)
-                    .foregroundColor(softWhite.opacity(0.6))
+                    .foregroundColor(Color.secondaryTextColor)
 
                 Text(user.field)
                     .font(.subheadline)
-                    .foregroundColor(accentBlue)
+                    .foregroundColor(Color.accentBlue)
             }
         }
         .frame(maxWidth: .infinity)
         .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 24)
-                .fill(glassMorphism)
-                .background(
-                    RoundedRectangle(cornerRadius: 24)
-                        .fill(primaryDark.opacity(0.3))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24)
-                        .stroke(accentBlue.opacity(0.2), lineWidth: 1)
-                )
-        )
+        .glassCard(cornerRadius: 24)
+        .scaleEffect(isAnimating ? 1.01 : 1.0)
+        .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isAnimating)
         .padding(.horizontal)
     }
 
@@ -134,24 +112,26 @@ struct ProfileView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text(title)
                 .font(.headline)
-                .foregroundColor(accentBlue)
+                .foregroundColor(Color.accentBlue)
             
             content()
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(glassMorphism)
-                .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(primaryDark.opacity(0.3))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(softWhite.opacity(0.05), lineWidth: 1)
-                )
-        )
+        .glassCard(cornerRadius: 20)
+        .scaleEffect(isAnimating ? 1.01 : 1.0)
+        .animation(.easeInOut(duration: 2.5).repeatForever(autoreverses: true), value: isAnimating)
+    }
+}
+
+// MARK: - View Extensions
+extension ProfileView {
+    private func setupAnimations() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            withAnimation {
+                isAnimating = true
+            }
+        }
     }
 }
 

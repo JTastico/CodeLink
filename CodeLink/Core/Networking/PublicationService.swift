@@ -112,12 +112,15 @@ class PublicationService: ObservableObject {
     // --- AÑADIR COMENTARIO ---
     func addComment(text: String, to publication: Publication, by author: User, parentId: String? = nil) async throws {
         let newComment = Comment(
+            id: UUID().uuidString,
+            username: author.username,
+            profileImageURL: author.profilePictureURL,
             publicationId: publication.id,
             authorUid: author.id,
             authorUsername: author.username,
             text: text,
             createdAt: Date().timeIntervalSince1970,
-            parentId: parentId // Guardamos el ID del padre
+            parentId: parentId
         )
         
         // La ruta para guardar no cambia, sigue siendo bajo el ID de la publicación.
