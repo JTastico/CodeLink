@@ -301,7 +301,14 @@ struct FeedView: View {
                 .padding(.trailing, 24)
                 .padding(.bottom, 34)
             }
-            .navigationTitle("Feed")
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("CodeLink")
+                        .font(.title2.bold())
+                        .foregroundColor(Color.white.opacity(0.95)) // softWhite
+                }
+            }
+
             .navigationBarTitleDisplayMode(.large)
             .toolbarBackground(primaryDark.opacity(0.95), for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)

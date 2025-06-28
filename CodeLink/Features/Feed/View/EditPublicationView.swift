@@ -1,10 +1,3 @@
-//
-//  EditPublicationView.swift
-//  CodeLink
-//
-//  Created by Jamil Turpo on 26/06/25.
-//
-
 import SwiftUI
 
 struct EditPublicationView: View {
@@ -13,7 +6,9 @@ struct EditPublicationView: View {
 
     private let publicationService = PublicationService()
     @State private var isSaving = false
+    @State private var showContent = false // Para animaciones de entrada/salida
 
+    // Paleta de colores
     private let primaryDark = Color(red: 0.05, green: 0.08, blue: 0.15)
     private let secondaryDark = Color(red: 0.08, green: 0.12, blue: 0.20)
     private let accentBlue = Color(red: 0.20, green: 0.50, blue: 0.85)
@@ -32,25 +27,38 @@ struct EditPublicationView: View {
                 )
                 .ignoresSafeArea()
 
-                VStack(spacing: 0) {
-                    headerSection
+                if showContent {
+                    VStack(spacing: 0) {
+                        headerSection
+                            .transition(.move(edge: .top).combined(with: .opacity))
 
-                    ScrollView {
-                        VStack(spacing: 28) {
-                            descriptionSection
-                            statusSection
+                        ScrollView {
+                            VStack(spacing: 28) {
+                                descriptionSection
+                                    .transition(.scale.combined(with: .opacity))
+                                statusSection
+                                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                            }
+                            .padding(.horizontal, 24)
+                            .padding(.top, 32)
+                            .padding(.bottom, 120)
                         }
-                        .padding(.horizontal, 24)
-                        .padding(.top, 32)
-                        .padding(.bottom, 120)
-                    }
-                }
 
-                VStack {
-                    Spacer()
-                    floatingActionButton
+                        floatingActionButton
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                    .animation(.spring(response: 0.6, dampingFraction: 0.85), value: showContent)
                 }
-                .padding(.bottom, 34)
+            }
+            .onAppear {
+                withAnimation(.easeInOut(duration: 0.4)) {
+                    showContent = true
+                }
+            }
+            .onDisappear {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    showContent = false
+                }
             }
         }
     }
@@ -71,7 +79,11 @@ struct EditPublicationView: View {
 
                 Spacer()
 
-                Button(action: { dismiss() }) {
+                Button(action: {
+                    withAnimation {
+                        dismiss()
+                    }
+                }) {
                     Image(systemName: "xmark")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(lightBlue)
@@ -132,8 +144,7 @@ struct EditPublicationView: View {
 
             ZStack(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(LinearGradient(colors: [secondaryDark.opacity(0.6), glassMorphism], startPoint: .top, endPoint: .bottom)) // Opción C
-
+                    .fill(secondaryDark.opacity(0.6))
                     .overlay(
                         RoundedRectangle(cornerRadius: 20)
                             .stroke(
@@ -220,7 +231,6 @@ struct EditPublicationView: View {
                 .padding(.vertical, 16)
                 .background(
                     RoundedRectangle(cornerRadius: 16)
-                        // Puedes aplicar el mismo patrón de fill aquí si deseas
                         .fill(secondaryDark.opacity(0.6))
                         .overlay(
                             RoundedRectangle(cornerRadius: 16)
@@ -295,6 +305,7 @@ struct EditPublicationView: View {
             Spacer()
         }
         .padding(.horizontal, 24)
+        .padding(.bottom, 34)
     }
 
     private func saveChanges() async {
@@ -312,13 +323,13 @@ struct EditPublicationView: View {
             let successFeedback = UINotificationFeedbackGenerator()
             successFeedback.notificationOccurred(.success)
 
-            dismiss()
+            withAnimation {
+                dismiss()
+            }
         } catch {
-            print("Error al guardar los cambios: \(error.localizedDescription)")
-
+            print("Error al guardar: \(error.localizedDescription)")
             let errorFeedback = UINotificationFeedbackGenerator()
             errorFeedback.notificationOccurred(.error)
-
             isSaving = false
         }
     }
