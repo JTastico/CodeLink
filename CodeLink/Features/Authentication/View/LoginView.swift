@@ -8,55 +8,65 @@
 import SwiftUI
 
 struct LoginView: View {
-    // ANTES: @EnvironmentObject var authService: AuthService
-    // AHORA: Es una variable normal que la vista está obligada a recibir.
     @ObservedObject var authService: AuthService
     
     var body: some View {
-        VStack(spacing: 20) {
-            Spacer()
+        ZStack {
+            // Aplicamos el color de fondo a toda la pantalla
+            Color.backgroundColor.ignoresSafeArea()
             
-            Text("CodeLink")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-            
-            Text("Tu comunidad de desarrollo")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-            
-            Spacer()
-            
-            // Los botones ahora llamarán a la variable que recibimos
-            Button {
-                authService.signInWithGoogle()
-            } label: {
-                HStack {
-                    Image(systemName: "g.circle.fill")
-                    Text("Continuar con Google")
-                        .frame(maxWidth: .infinity)
+            VStack(spacing: 20) {
+                Spacer()
+                
+                // Título con colores del tema
+                VStack {
+                    Image(systemName: "link.circle.fill")
+                        .font(.system(size: 60))
+                        .foregroundStyle(Color.accentColor)
+                    
+                    Text("CodeLink")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                        .foregroundStyle(Color.primaryTextColor)
                 }
-            }
-            .buttonStyle(.bordered)
-            
-            Button {
-                authService.signInWithGitHub()
-            } label: {
-                HStack {
-                    Image(systemName: "g.circle.fill")
-                    Text("Continuar con GitHub")
-                        .frame(maxWidth: .infinity)
-                }
-            }
-            .buttonStyle(.bordered)
-            .tint(.black)
+                .padding(.bottom, 20)
 
-            Spacer()
+                Text("Tu comunidad de desarrollo")
+                    .font(.headline)
+                    .foregroundStyle(Color.secondaryTextColor)
+                
+                Spacer()
+                
+                // Botones con nuestro nuevo estilo personalizado
+                Button {
+                    authService.signInWithGoogle()
+                } label: {
+                    HStack {
+                        // Podrías añadir un logo de Google aquí si quisieras
+                        Text("Continuar con Google")
+                    }
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                
+                Button {
+                    authService.signInWithGitHub()
+                } label: {
+                    HStack {
+                        // Podrías añadir un logo de GitHub aquí
+                        Text("Continuar con GitHub")
+                    }
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .tint(.white) // Le damos un tinte para que el efecto visual sea más claro
+                .foregroundColor(Color.backgroundColor) // Texto oscuro
+                
+                Spacer()
+            }
+            .padding()
         }
-        .padding()
     }
 }
 
-// Arreglamos la vista previa (preview) pasándole una instancia de AuthService
 #Preview {
     LoginView(authService: AuthService())
 }

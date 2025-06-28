@@ -5,7 +5,6 @@
 //  Created by Jamil Turpo on 24/06/25.
 //
 
-
 import Foundation
 import FirebaseCore
 import FirebaseAuth
@@ -54,7 +53,9 @@ class AuthService: ObservableObject {
                     let jsonData = try JSONSerialization.data(withJSONObject: userData)
                     let userProfile = try JSONDecoder().decode(User.self, from: jsonData)
                     self?.appUser = userProfile
-                } catch { print("Error al decodificar perfil de usuario en tiempo real: \(error)") }
+                } catch {
+                    print("Error al decodificar perfil de usuario en tiempo real: \(error)")
+                }
             } else {
                 self?.createUserProfileIfNeeded(for: userId)
             }
@@ -96,52 +97,64 @@ class AuthService: ObservableObject {
             print("Error al guardar perfil de usuario: \(error)")
         }
     }
-    
-    // --- FUNCIÓN DE SUBIR IMAGEN REESCRITA CON ASYNC/AWAIT ---
+
     func uploadProfileImage(_ imageData: Data) async throws -> URL {
         guard let userId = firebaseUser?.uid else {
-            throw URLError(.badURL) // Lanza un error si no hay ID de usuario
+            throw URLError(.badURL)
         }
         
         let profilePicRef = storageRef.child("profile_pictures/\(userId).jpg")
-        
-        // El nuevo método 'putDataAsync' espera a que la subida termine
         let _ = try await profilePicRef.putDataAsync(imageData)
-        
-        // El nuevo método 'downloadURL()' también espera a obtener la URL
-        let downloadURL = try await profilePicRef.downloadURL()
-        
-        return downloadURL
+        return try await profilePicRef.downloadURL()
     }
-    
-    // --- El resto de los métodos de Login y Logout se quedan igual ---
-    // (Asegúrate de que estén aquí)
+
+    // MARK: - Inicio de Sesión con Google
     func signInWithGoogle() {
         guard let clientID = FirebaseApp.app()?.options.clientID else { return }
         let config = GIDConfiguration(clientID: clientID)
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first,
+              let rootViewController = window.rootViewController else { return }
+
         GIDSignIn.sharedInstance.configuration = config
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene, let window = windowScene.windows.first, let rootViewController = window.rootViewController else { return }
         GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController) { [weak self] result, error in
             guard error == nil, let user = result?.user, let idToken = user.idToken?.tokenString else { return }
             let credential = GoogleAuthProvider.credential(withIDToken: idToken, accessToken: user.accessToken.tokenString)
             self?.authenticate(with: credential)
         }
     }
+
+
     func signInWithGitHub() {
         let provider = OAuthProvider(providerID: "github.com")
         provider.getCredentialWith(nil) { [weak self] credential, error in
-            guard let credential = credential, error == nil else { return }
-            self?.authenticate(with: credential)
+            if let error = error {
+                print("GitHub login error: \(error.localizedDescription)")
+                return
+            }
+            
+            if let credential = credential {
+                self?.authenticate(with: credential)
+            }
         }
     }
+
+
     private func authenticate(with credential: AuthCredential) {
         Auth.auth().signIn(with: credential) { _, error in
-            if let error = error { print("Error al autenticar en Firebase: \(error.localizedDescription)") }
+            if let error = error {
+                print("Error al autenticar en Firebase: \(error.localizedDescription)")
+            }
         }
     }
+
+
     func signOut() {
         GIDSignIn.sharedInstance.signOut()
-        do { try Auth.auth().signOut() }
-        catch { print("Error al cerrar sesión en Firebase: \(error.localizedDescription)") }
+        do {
+            try Auth.auth().signOut()
+        } catch {
+            print("Error al cerrar sesión en Firebase: \(error.localizedDescription)")
+        }
     }
 }

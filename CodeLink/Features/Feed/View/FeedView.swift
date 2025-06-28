@@ -24,65 +24,75 @@ struct PublicationRowView: View {
     }
     
     var body: some View {
-        // Creamos constantes locales para simplificar la vista y evitar errores del compilador.
         let likesText = "\(publication.likes) Me gusta"
         let commentsText = "\(publication.commentCount) Comentar"
         
         VStack(alignment: .leading, spacing: 12) {
             // Cabecera con autor y menú de opciones
             HStack {
-                Image(systemName: "person.circle.fill").font(.largeTitle).foregroundStyle(.gray)
+                Image(systemName: "person.circle.fill")
+                    .font(.largeTitle)
+                    .foregroundStyle(.gray)
                 VStack(alignment: .leading) {
                     Text(publication.authorUsername).font(.headline)
-                    Text(publication.formattedDate).font(.caption).foregroundStyle(.secondary)
+                    Text(publication.formattedDate)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 Spacer()
                 
                 if isAuthor {
                     Menu {
-                        Button { showingEditView = true } label: { Label("Editar", systemImage: "pencil") }
+                        Button { showingEditView = true } label: {
+                            Label("Editar", systemImage: "pencil")
+                        }
                         Button(role: .destructive) {
-                            Task { try? await publicationService.deletePublication(publication) }
-                        } label: { Label("Eliminar", systemImage: "trash") }
+                            Task {
+                                try? await publicationService.deletePublication(publication)
+                            }
+                        } label: {
+                            Label("Eliminar", systemImage: "trash")
+                        }
                     } label: {
-                        Image(systemName: "ellipsis").padding(8).background(Color.gray.opacity(0.1)).clipShape(Circle())
+                        Image(systemName: "ellipsis")
+                            .padding(8)
+                            .background(Color.gray.opacity(0.1))
+                            .clipShape(Circle())
                     }
                     .menuStyle(.button)
                 }
             }
             
-            Text(publication.description).lineLimit(5)
+            Text(publication.description)
+                .foregroundStyle(Color.primaryTextColor.opacity(0.9))
+                .lineLimit(5)
             
             HStack {
                 Text(publication.status.displayName)
-                    .font(.caption.bold()).padding(6)
-                    .background(Color.blue.opacity(0.2)).clipShape(Capsule())
+                    .font(.caption.bold())
+                    .padding(.horizontal, 10).padding(.vertical, 4)
+                    .background(Color.accentColor.opacity(0.2))
+                    .foregroundStyle(Color.accentColor)
+                    .clipShape(Capsule())
                 Spacer()
             }
             
-            Divider()
+            Divider().background(Color.surfaceColor)
             
-            // Botones de interacción
             HStack(spacing: 20) {
                 Spacer()
-                // --- BOTÓN "ME GUSTA" CON ANIMACIÓN ---
+                
                 Button {
-                    // La lógica del like no cambia
                     youLiked.toggle()
                     publicationService.likePublication(publicationId: publication.id, currentLikes: publication.likes, shouldLike: youLiked)
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: youLiked ? "hand.thumbsup.fill" : "hand.thumbsup")
-                            // --- 1. Animación de Escala ---
-                            // El ícono crece un 20% cuando 'youLiked' es verdadero.
                             .scaleEffect(youLiked ? 1.2 : 1.0)
                         Text(likesText)
                     }
                 }
                 .tint(youLiked ? .blue : .secondary)
-                // --- 2. Modificador de Animación ---
-                // Le decimos a SwiftUI que anime cualquier cambio que dependa de 'youLiked'
-                // usando una animación de resorte (spring) para un efecto de "rebote".
                 .animation(.spring(response: 0.4, dampingFraction: 0.5), value: youLiked)
                 
                 Button {
@@ -92,10 +102,12 @@ struct PublicationRowView: View {
                 }
                 Spacer()
             }
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Color.secondaryTextColor)
             .buttonStyle(.plain)
         }
-        .padding(.vertical, 8)
+        .padding()
+        .background(Color.surfaceColor)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
         .sheet(isPresented: $showingEditView) {
             EditPublicationView(publication: $publication)
         }
@@ -109,7 +121,7 @@ struct PublicationRowView: View {
 }
 
 
-// --- VISTA PRINCIPAL DEL FEED (SIN CAMBIOS) ---
+// --- VISTA PRINCIPAL DEL FEED ---
 struct FeedView: View {
     @StateObject private var viewModel = FeedViewModel()
     @ObservedObject var authService: AuthService
@@ -118,23 +130,34 @@ struct FeedView: View {
     
     var body: some View {
         NavigationStack {
-            List {
-                ForEach($viewModel.publications) { $publication in
-                    NavigationLink(destination: PublicationDetailView(publication: publication, currentUser: authService.appUser)) {
-                        PublicationRowView(publication: $publication, currentUserId: authService.appUser?.id ?? "", currentUser: authService.appUser)
+            ScrollView {
+                LazyVStack(spacing: 16) {
+                    ForEach($viewModel.publications) { $publication in
+                        NavigationLink(destination: PublicationDetailView(publication: publication, currentUser: authService.appUser)) {
+                            PublicationRowView(publication: $publication, currentUserId: authService.appUser?.id ?? "", currentUser: authService.appUser)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
+                .padding()
             }
-            .listStyle(.plain)
+            .background(Color.backgroundColor)
             .navigationTitle("Feed")
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                Button { showingCreatePublication = true } label: { Image(systemName: "plus.circle.fill") }
+                Button {
+                    showingCreatePublication = true
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title2)
+                }
             }
             .sheet(isPresented: $showingCreatePublication) {
                 if let currentUser = authService.appUser {
                     CreatePublicationView(author: currentUser)
                 }
             }
+            .toolbarColorScheme(.dark, for: .navigationBar)
         }
     }
 }
