@@ -7,8 +7,6 @@
 
 import SwiftUI
 
-// --- LA SOLUCIÓN ESTÁ AQUÍ ---
-// Volvemos a definir la sub-vista que se usa para cada fila de comentario.
 struct CommentRowView: View {
     let comment: Comment
     let isReply: Bool
@@ -17,13 +15,9 @@ struct CommentRowView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 12) {
-                // Avatar
-                Image(systemName: "person.crop.circle")
-                    .resizable()
-                    .frame(width: isReply ? 32 : 40, height: isReply ? 32 : 40)
-                    .foregroundColor(.secondary)
+                // Avatar del comentario (esto ya debería funcionar bien)
+                AvatarView(imageURL: comment.profileImageURL, size: isReply ? 32 : 40)
 
-                // Contenido del comentario
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 4) {
                         Text(comment.authorUsername)
@@ -38,7 +32,6 @@ struct CommentRowView: View {
                 Spacer()
             }
 
-            // Botón de responder (solo para comentarios padres)
             if !isReply {
                 Button("Responder") {
                     withAnimation {
@@ -105,7 +98,7 @@ struct PublicationDetailView: View {
                     Text(publication.status.displayName).font(.caption).foregroundColor(.secondary)
                 }
                 Spacer()
-                Image(systemName: "chevron.left").opacity(0) // Para mantener el título centrado
+                Image(systemName: "chevron.left").opacity(0)
             }
             .padding()
             Divider()
@@ -116,7 +109,9 @@ struct PublicationDetailView: View {
     private var publicationCard: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 12) {
-                Image(systemName: "person.crop.circle").resizable().frame(width: 44, height: 44).foregroundColor(.blue)
+                // --- CAMBIO AQUÍ ---
+                AvatarView(imageURL: publication.authorProfilePictureURL, size: 44)
+                
                 VStack(alignment: .leading, spacing: 2) {
                     Text(publication.authorUsername).font(.system(size: 16, weight: .semibold))
                     Text(publication.formattedDate).font(.system(size: 12)).foregroundColor(.secondary)

@@ -14,23 +14,18 @@ class PublicationService: ObservableObject {
     private var dbRef: DatabaseReference = Database.database().reference()
     private var storageRef: StorageReference = Storage.storage().reference()
     
-    // --- SUBIR IMAGEN (NUEVA FUNCIÓN PRIVADA) ---
     private func uploadPublicationImage(_ imageData: Data) async throws -> URL {
         let imageId = UUID().uuidString
         let imageRef = storageRef.child("publication_images/\(imageId).jpg")
         
-        // Sube los datos de la imagen
         let _ = try await imageRef.putDataAsync(imageData)
         
-        // Obtiene y devuelve la URL de descarga
         return try await imageRef.downloadURL()
     }
     
-    // --- CREAR PUBLICACIÓN (ACTUALIZADO) ---
     func createPublication(description: String, status: PublicationStatus, imageData: Data?, author: User) async throws {
         var imageURLString: String? = nil
         
-        // 1. Si se proporcionan datos de imagen, súbelos
         if let imageData = imageData {
             let imageURL = try await uploadPublicationImage(imageData)
             imageURLString = imageURL.absoluteString
@@ -39,17 +34,18 @@ class PublicationService: ObservableObject {
         let publicationRef = dbRef.child("publications").childByAutoId()
         let publicationId = publicationRef.key ?? UUID().uuidString
         
-        // 2. Incluye la URL de la imagen en el nuevo objeto de publicación
+        // Incluimos la URL del perfil del autor al crear el objeto Publication
         let newPublication = Publication(
             id: publicationId,
             authorUid: author.id,
             authorUsername: author.username,
+            authorProfilePictureURL: author.profilePictureURL, // <-- LÍNEA CLAVE
             description: description,
-            imageURL: imageURLString, // <- Aquí se guarda la URL
+            imageURL: imageURLString,
             createdAt: Date().timeIntervalSince1970,
             status: status,
             likes: 0,
-            commentCount: 0 // Aseguramos que se inicialice
+            commentCount: 0
         )
         
         let data = try JSONEncoder().encode(newPublication)
@@ -57,7 +53,6 @@ class PublicationService: ObservableObject {
         try await publicationRef.setValue(json)
     }
     
-    // --- El resto del servicio no necesita cambios ---
     func updatePublication(_ publication: Publication) async throws {
         let publicationRef = dbRef.child("publications").child(publication.id)
         let data = try JSONEncoder().encode(publication)
@@ -66,8 +61,7 @@ class PublicationService: ObservableObject {
     }
     
     func deletePublication(_ publication: Publication) async throws {
-        // Antes de eliminar la publicación, elimina la imagen asociada si existe
-        if let imageUrlString = publication.imageURL, let imageUrl = URL(string: imageUrlString) {
+        if let imageUrlString = publication.imageURL {
             let imageRef = Storage.storage().reference(forURL: imageUrlString)
             try? await imageRef.delete()
         }
@@ -75,6 +69,8 @@ class PublicationService: ObservableObject {
         let publicationRef = dbRef.child("publications").child(publication.id)
         try await publicationRef.removeValue()
     }
+    
+    // ... El resto del archivo permanece igual ...
     
     func likePublication(publicationId: String, currentLikes: Int, shouldLike: Bool) {
         let likesRef = dbRef.child("publications").child(publicationId).child("likes")

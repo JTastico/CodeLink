@@ -24,8 +24,8 @@ struct PublicationRowView: View {
 
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 12) {
-                Image(systemName: "person.crop.circle")
-                    .resizable().frame(width: 44, height: 44).foregroundColor(.blue)
+                // --- CAMBIO AQUÍ ---
+                AvatarView(imageURL: publication.authorProfilePictureURL, size: 44)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(publication.authorUsername).font(.system(size: 16, weight: .semibold)).foregroundColor(.primary)
@@ -47,7 +47,6 @@ struct PublicationRowView: View {
             Text(publication.description)
                 .font(.system(size: 15)).foregroundColor(.primary).lineLimit(5).lineSpacing(3)
             
-            // --- IMAGEN DE LA PUBLICACIÓN (NUEVO) ---
             if let imageURLString = publication.imageURL, let imageURL = URL(string: imageURLString) {
                 AsyncImage(url: imageURL) { image in
                     image
