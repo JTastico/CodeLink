@@ -14,6 +14,9 @@ struct FeedView: View {
     
     // 1. Estado para almacenar el filtro seleccionado
     @State private var selectedStatus: PublicationStatus? = nil
+    
+    // Estado para mostrar la búsqueda de usuarios (EXISTENTE, AHORA FUSIONADO)
+    @State private var showingUserSearch = false
 
     var body: some View {
         NavigationStack {
@@ -38,7 +41,8 @@ struct FeedView: View {
                                     PublicationRowView(publication: $viewModel.publications[index],
                                                        currentUserId: authService.appUser?.id ?? "",
                                                        currentUser: authService.appUser)
-                                        .padding(.horizontal, 20) // Padding aplicado a la fila
+                                    // Padding aplicado a la fila, como lo tenías
+                                        .padding(.horizontal, 20)
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -68,6 +72,15 @@ struct FeedView: View {
                 ToolbarItem(placement: .principal) {
                     Text("CodeLink").font(.title2.bold()).foregroundColor(.primaryTextColor)
                 }
+                // Botón de búsqueda de usuarios (RE-AÑADIDO)
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showingUserSearch = true
+                    } label: {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(.primaryTextColor) // Usa el color de texto primario de tu tema
+                    }
+                }
             }
             .toolbarBackground(Color.backgroundColor, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
@@ -77,6 +90,10 @@ struct FeedView: View {
             if let user = authService.appUser {
                 CreatePublicationView(author: user)
             }
+        }
+        // Sheet para la vista de búsqueda de usuarios (RE-AÑADIDO)
+        .sheet(isPresented: $showingUserSearch) {
+            UserSearchView(authService: authService)
         }
     }
 
@@ -98,7 +115,7 @@ struct FeedView: View {
         .padding(.top, 8)
     }
 
-    // --- VISTA PARA LA BARRA DE FILTROS ---
+    // --- VISTA PARA LA BARRA DE FILTROS --- (EXISTENTE, AHORA INCLUIDA)
     private var filterBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {
@@ -115,7 +132,7 @@ struct FeedView: View {
                 // Botones para cada tipo de publicación
                 ForEach(PublicationStatus.allCases, id: \.self) { status in
                     FilterButton(
-                        title: status.displayName, //
+                        title: status.displayName,
                         isSelected: selectedStatus == status
                     ) {
                         withAnimation(.easeInOut(duration: 0.2)) {
@@ -130,7 +147,7 @@ struct FeedView: View {
     }
 }
 
-// --- COMPONENTE REUTILIZABLE PARA LOS BOTONES DE FILTRO ---
+// --- COMPONENTE REUTILIZABLE PARA LOS BOTONES DE FILTRO --- (EXISTENTE, AHORA INCLUIDO)
 struct FilterButton: View {
     let title: String
     let isSelected: Bool

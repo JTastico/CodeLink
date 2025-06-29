@@ -12,15 +12,34 @@ struct ProfileView: View {
     @StateObject private var feedViewModel = FeedViewModel()
     @State private var isAnimating = false
 
-    // Filtra las publicaciones para mostrar solo las del usuario actual
+    // --- CAMBIO AQUÍ: La vista ahora acepta un 'User' opcional ---
+    // Si se inicializa con un usuario, se muestra ese perfil.
+    // Si no se proporciona (o es nil), asume que es el perfil del usuario autenticado.
+    var userToShow: User?
+    
+    // Propiedad computada para obtener el usuario que se debe mostrar
+    private var displayUser: User? {
+        userToShow ?? authService.appUser
+    }
+
+    // Filtra las publicaciones para mostrar solo las del usuario actual o el usuario pasado
     private var myPublications: [Binding<Publication>] {
         feedViewModel.publications
-            .filter { $0.authorUid == authService.appUser?.id }
+            .filter { $0.authorUid == displayUser?.id } // Filtra por el ID del usuario a mostrar
             .map { publication in
                 // Encuentra el índice de la publicación en el array original para poder enlazarlo (Binding)
                 let index = feedViewModel.publications.firstIndex(where: { $0.id == publication.id })!
                 return $feedViewModel.publications[index]
             }
+    }
+    
+    // --- NUEVO INICIALIZADOR ---
+    // Esto permite que ProfileView sea reutilizable.
+    // Si `user` es nil, mostrará el perfil del usuario autenticado (se usará en MainView).
+    // Si se pasa un `user`, mostrará ese perfil (se usará desde UserSearchView).
+    init(authService: AuthService, user: User? = nil) {
+        self.authService = authService
+        self.userToShow = user
     }
 
     var body: some View {
@@ -31,7 +50,7 @@ struct ProfileView: View {
                     .opacity(isAnimating ? 1.0 : 0.8)
                     .animation(.easeInOut(duration: 1.5), value: isAnimating)
 
-                if let user = authService.appUser {
+                if let user = displayUser { // Usa displayUser aquí
                     ScrollView {
                         VStack(spacing: 28) {
                             profileHeader(user: user)
@@ -74,14 +93,14 @@ struct ProfileView: View {
     @ViewBuilder
     private var myPublicationsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Mis Publicaciones")
+            Text("Publicaciones") // Cambiado a "Publicaciones" genérico
                 .font(.headline)
                 .foregroundColor(Color.accentBlue)
                 .padding(.horizontal)
 
             if myPublications.isEmpty {
                 VStack {
-                    Text("Aún no has realizado ninguna publicación.")
+                    Text("Aún no se han realizado publicaciones.") // Mensaje más genérico
                         .foregroundColor(.secondaryTextColor)
                         .padding()
                 }

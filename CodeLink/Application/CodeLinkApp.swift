@@ -8,17 +8,11 @@
 import SwiftUI
 import FirebaseCore
 import SwiftData
-import Cloudinary // <- 1. Importa el nuevo SDK
 
 class AppDelegate: NSObject, UIApplicationDelegate {
   func application(_ application: UIApplication,
                    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
     FirebaseApp.configure()
-    
-    // --- 2. CONFIGURA CLOUDINARY AQUÍ ---
-    // Reemplaza con tus propias credenciales de Cloudinary
-    let config = CLDConfiguration(cloudName: "TU_CLOUD_NAME", apiKey: "TU_API_KEY", apiSecret: "TU_API_SECRET")
-    CLDCloudinary(configuration: config)
     
     return true
   }
