@@ -10,26 +10,23 @@ import PhotosUI
 
 struct EditProfileView: View {
     @Environment(\.dismiss) var dismiss
-    @State private var user: User
-    var authService: AuthService
-
+    
+    // La vista ahora depende del controlador
+    @StateObject var controller: ProfileController
+    
     @State private var selectedPhoto: PhotosPickerItem?
-    @State private var selectedPhotoData: Data?
-    @State private var isSaving = false
     @State private var isAnimating = false
 
     let fields = ["iOS Developer", "Android Developer", "Web Developer", "Backend Developer", "UI/UX Designer", "Project Manager", "QA Tester", "Tech Enthusiast"]
 
-
-    init(user: User, authService: AuthService) {
-        _user = State(initialValue: user)
-        self.authService = authService
+    // El inicializador ahora recibe el controlador
+    init(controller: ProfileController) {
+        _controller = StateObject(wrappedValue: controller)
     }
 
     var body: some View {
         NavigationStack {
             ZStack {
-                // Fondo gradiente
                 Color.primaryGradient
                     .ignoresSafeArea()
                     .opacity(isAnimating ? 1.0 : 0.8)
@@ -48,7 +45,6 @@ struct EditProfileView: View {
                     setupAnimations()
                 }
 
-                // Botón de guardar flotante
                 VStack {
                     Spacer()
                     HStack {
@@ -75,13 +71,14 @@ struct EditProfileView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar") { dismiss() }
                     .foregroundColor(Color.accentBlue)
-                    .disabled(isSaving)
+                    .disabled(controller.isSaving)
                 }
             }
             .onChange(of: selectedPhoto) {
                 Task {
                     if let data = try? await selectedPhoto?.loadTransferable(type: Data.self) {
-                        self.selectedPhotoData = data
+                        // La vista actualiza la propiedad en el controlador
+                        controller.selectedPhotoData = data
                     }
                 }
             }
@@ -92,7 +89,8 @@ struct EditProfileView: View {
 
     private var profilePictureSection: some View {
         VStack(spacing: 16) {
-            if let selectedPhotoData, let uiImage = UIImage(data: selectedPhotoData) {
+            // La vista lee los datos del controlador
+            if let photoData = controller.selectedPhotoData, let uiImage = UIImage(data: photoData) {
                 Image(uiImage: uiImage)
                     .resizable().scaledToFill().frame(width: 120, height: 120).clipShape(Circle())
                     .overlay(Circle().stroke(Color.accentBlue, lineWidth: 2))
@@ -101,10 +99,9 @@ struct EditProfileView: View {
                     .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isAnimating)
             } else {
                 AvatarView(
-                    imageURL: user.profilePictureURL,
+                    imageURL: controller.user.profilePictureURL,
                     size: 120
                 )
-
                 .scaleEffect(isAnimating ? 1.05 : 1.0)
                 .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isAnimating)
             }
@@ -140,7 +137,8 @@ struct EditProfileView: View {
                 .foregroundColor(Color.primaryTextColor)
 
             VStack(spacing: 16) {
-                TextField("Nombre de Usuario", text: $user.username)
+                // Los TextFields ahora se enlazan a las propiedades del controlador
+                TextField("Nombre de Usuario", text: $controller.user.username)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .padding()
@@ -149,14 +147,14 @@ struct EditProfileView: View {
                     .cornerRadius(10)
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.accentBlue.opacity(0.3), lineWidth: 1))
 
-                TextField("Nombre Completo", text: $user.fullName)
+                TextField("Nombre Completo", text: $controller.user.fullName)
                     .padding()
                     .foregroundColor(Color.primaryTextColor)
                     .background(Color.glassMorphism)
                     .cornerRadius(10)
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.accentBlue.opacity(0.3), lineWidth: 1))
 
-                Picker("Especialidad", selection: $user.field) {
+                Picker("Especialidad", selection: $controller.user.field) {
                     ForEach(fields, id: \.self) { Text($0) }
                 }
                 .pickerStyle(MenuPickerStyle())
@@ -180,13 +178,13 @@ struct EditProfileView: View {
                 .foregroundColor(Color.primaryTextColor)
 
             ZStack(alignment: .topLeading) {
-                if user.aboutMe?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true {
+                if controller.user.aboutMe?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true {
                     Text("Escribe algo sobre ti...")
                         .foregroundColor(Color.secondaryTextColor.opacity(0.6))
                         .padding(16)
                 }
 
-                TextEditor(text: $user.aboutMe.replacingNilWithDefault())
+                TextEditor(text: $controller.user.aboutMe.replacingNilWithDefault())
                     .padding(14)
                     .foregroundColor(Color.primaryTextColor)
                     .background(Color.clear)
@@ -204,17 +202,27 @@ struct EditProfileView: View {
     }
 
     private var saveButton: some View {
-        Button(action: { Task { await saveProfile() } }) {
+        // La acción del botón ahora llama al método del controlador
+        Button(action: {
+            Task {
+                do {
+                    try await controller.saveProfile()
+                    dismiss() // Si tiene éxito, cierra la vista
+                } catch {
+                    print("Error al guardar el perfil: \(error.localizedDescription)")
+                    // Aquí podrías mostrar una alerta al usuario
+                }
+            }
+        }) {
             HStack {
-                if isSaving {
+                if controller.isSaving {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: Color.primaryTextColor))
                         .scaleEffect(0.9)
                 } else {
                     Image(systemName: "checkmark.circle.fill")
                 }
-
-                Text(isSaving ? "Guardando..." : "Guardar Cambios")
+                Text(controller.isSaving ? "Guardando..." : "Guardar Cambios")
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 14)
@@ -226,41 +234,22 @@ struct EditProfileView: View {
             )
         }
         .buttonStyle(PrimaryButtonStyle())
-        .disabled(isSaving)
-        .scaleEffect(isSaving ? 0.95 : 1.0)
-        .animation(.easeInOut(duration: 0.2), value: isSaving)
+        .disabled(controller.isSaving)
+        .scaleEffect(controller.isSaving ? 0.95 : 1.0)
+        .animation(.easeInOut(duration: 0.2), value: controller.isSaving)
         .scaleEffect(isAnimating ? 1.05 : 1.0)
         .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isAnimating)
     }
 
-    // Eliminado roundedField ya que ahora usamos los estilos del sistema de diseño
-
-    // MARK: - Animaciones
     private func setupAnimations() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             isAnimating = true
         }
     }
-    
-    // MARK: - Guardado
-    func saveProfile() async {
-        isSaving = true
-        do {
-            if let imageData = selectedPhotoData {
-                let newURL = try await authService.uploadProfileImage(imageData)
-                user.profilePictureURL = newURL.absoluteString
-            }
-
-            authService.updateUserProfile(user)
-            dismiss()
-        } catch {
-            print("Error al guardar el perfil: \(error.localizedDescription)")
-            isSaving = false
-        }
-    }
 }
 
 // MARK: - Extensión útil
+// Esta extensión puede permanecer o moverse a un archivo de utilidades
 extension Binding where Value == String? {
     func replacingNilWithDefault() -> Binding<String> {
         return Binding<String>(
@@ -268,10 +257,4 @@ extension Binding where Value == String? {
             set: { self.wrappedValue = $0 }
         )
     }
-}
-
-// MARK: - Preview
-#Preview {
-    let sampleUser = User(id: "preview123", username: "preview_user", fullName: "Preview Name", email: "preview@test.com", profilePictureURL: nil, field: "iOS Developer", aboutMe: "")
-    return EditProfileView(user: sampleUser, authService: AuthService())
 }

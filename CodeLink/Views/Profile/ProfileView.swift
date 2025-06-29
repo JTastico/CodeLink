@@ -10,7 +10,6 @@ import SwiftUI
 struct ProfileView: View {
     @ObservedObject var authService: AuthService
     @State private var showingEditProfile = false
-    
     @State private var isAnimating = false
 
     var body: some View {
@@ -26,7 +25,6 @@ struct ProfileView: View {
                         VStack(spacing: 28) {
                             profileHeader(user: user)
                                 .transition(AnyTransition.move(edge: .top).combined(with: AnyTransition.opacity))
-                                .animation(Animation.easeOut, value: showingEditProfile)
 
                             if let aboutMe = user.aboutMe, !aboutMe.isEmpty {
                                 glassSection(title: "Acerca de mí") {
@@ -45,6 +43,8 @@ struct ProfileView: View {
 
                             glassSection(title: "Cuenta") {
                                 Button("Cerrar Sesión", role: .destructive) {
+                                    // La lógica de cerrar sesión puede permanecer aquí o moverse
+                                    // a un controlador si se vuelve más compleja.
                                     authService.signOut()
                                 }
                                 .buttonStyle(SecondaryButtonStyle())
@@ -69,7 +69,12 @@ struct ProfileView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showingEditProfile) {
-                EditProfileView(user: authService.appUser!, authService: authService)
+                if let user = authService.appUser {
+                    // 1. Crea una instancia del controlador con los datos necesarios
+                    let profileController = ProfileController(user: user, authService: authService)
+                    // 2. Pasa el controlador a la vista de edición
+                    EditProfileView(controller: profileController)
+                }
             }
             .onAppear {
                 setupAnimations()
@@ -122,10 +127,7 @@ struct ProfileView: View {
         .scaleEffect(isAnimating ? 1.01 : 1.0)
         .animation(.easeInOut(duration: 2.5).repeatForever(autoreverses: true), value: isAnimating)
     }
-}
-
-// MARK: - View Extensions
-extension ProfileView {
+    
     private func setupAnimations() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             withAnimation {
@@ -133,8 +135,4 @@ extension ProfileView {
             }
         }
     }
-}
-
-#Preview {
-    ProfileView(authService: AuthService())
 }
