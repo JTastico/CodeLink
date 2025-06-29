@@ -5,14 +5,6 @@
 //  Created by Jamil Turpo on 28/06/25.
 //
 
-
-//
-//  PublicationController.swift
-//  CodeLink
-//
-//  Created by Jamil Turpo on 28/06/25.
-//
-
 import Foundation
 import SwiftUI
 import SwiftData
@@ -22,6 +14,9 @@ class PublicationController: ObservableObject {
     // Estado para la creación/edición de publicaciones
     @Published var publicationDescription: String = ""
     @Published var publicationStatus: PublicationStatus = .help
+    
+    // --- NUEVA PROPIEDAD PARA LA IMAGEN ---
+    @Published var selectedImageData: Data?
     
     // Dependencias a los servicios del Modelo
     private let publicationService = PublicationService()
@@ -33,6 +28,7 @@ class PublicationController: ObservableObject {
     func loadFrom(draft: PublicationDraft) {
         self.publicationDescription = draft.draftDescription
         self.publicationStatus = draft.status
+        self.selectedImageData = nil // Los borradores no guardan imágenes
     }
 
     func createPublication(author: User) async throws {
@@ -42,7 +38,7 @@ class PublicationController: ObservableObject {
         try await publicationService.createPublication(
             description: publicationDescription,
             status: publicationStatus,
-            imageData: nil, // Puedes añadir lógica para imágenes aquí
+            imageData: selectedImageData, // Pasamos los datos de la imagen
             author: author
         )
     }

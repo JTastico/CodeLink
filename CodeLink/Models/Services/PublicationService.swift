@@ -14,26 +14,42 @@ class PublicationService: ObservableObject {
     private var dbRef: DatabaseReference = Database.database().reference()
     private var storageRef: StorageReference = Storage.storage().reference()
     
-    // --- CREAR PUBLICACIÓN ---
-    func createPublication(description: String, status: PublicationStatus, imageData: Data?, author: User) async throws {
-        var imageURL: URL? = nil
+    // --- SUBIR IMAGEN (NUEVA FUNCIÓN PRIVADA) ---
+    private func uploadPublicationImage(_ imageData: Data) async throws -> URL {
+        let imageId = UUID().uuidString
+        let imageRef = storageRef.child("publication_images/\(imageId).jpg")
         
+        // Sube los datos de la imagen
+        let _ = try await imageRef.putDataAsync(imageData)
+        
+        // Obtiene y devuelve la URL de descarga
+        return try await imageRef.downloadURL()
+    }
+    
+    // --- CREAR PUBLICACIÓN (ACTUALIZADO) ---
+    func createPublication(description: String, status: PublicationStatus, imageData: Data?, author: User) async throws {
+        var imageURLString: String? = nil
+        
+        // 1. Si se proporcionan datos de imagen, súbelos
         if let imageData = imageData {
-            imageURL = try await uploadPublicationImage(imageData)
+            let imageURL = try await uploadPublicationImage(imageData)
+            imageURLString = imageURL.absoluteString
         }
         
         let publicationRef = dbRef.child("publications").childByAutoId()
         let publicationId = publicationRef.key ?? UUID().uuidString
         
+        // 2. Incluye la URL de la imagen en el nuevo objeto de publicación
         let newPublication = Publication(
             id: publicationId,
             authorUid: author.id,
             authorUsername: author.username,
             description: description,
-            imageURL: imageURL?.absoluteString,
+            imageURL: imageURLString, // <- Aquí se guarda la URL
             createdAt: Date().timeIntervalSince1970,
             status: status,
-            likes: 0
+            likes: 0,
+            commentCount: 0 // Aseguramos que se inicialice
         )
         
         let data = try JSONEncoder().encode(newPublication)
@@ -41,23 +57,25 @@ class PublicationService: ObservableObject {
         try await publicationRef.setValue(json)
     }
     
-    // --- ACTUALIZAR PUBLICACIÓN ---
+    // --- El resto del servicio no necesita cambios ---
     func updatePublication(_ publication: Publication) async throws {
         let publicationRef = dbRef.child("publications").child(publication.id)
         let data = try JSONEncoder().encode(publication)
-        let json = try JSONSerialization.jsonObject(with: data)
-        try await publicationRef.updateChildValues(json as! [AnyHashable : Any])
-        print("Publicación actualizada exitosamente.")
+        let json = try JSONSerialization.jsonObject(with: data) as? [AnyHashable: Any] ?? [:]
+        try await publicationRef.updateChildValues(json)
     }
     
-    // --- ELIMINAR PUBLICACIÓN ---
     func deletePublication(_ publication: Publication) async throws {
+        // Antes de eliminar la publicación, elimina la imagen asociada si existe
+        if let imageUrlString = publication.imageURL, let imageUrl = URL(string: imageUrlString) {
+            let imageRef = Storage.storage().reference(forURL: imageUrlString)
+            try? await imageRef.delete()
+        }
+        
         let publicationRef = dbRef.child("publications").child(publication.id)
         try await publicationRef.removeValue()
-        print("Publicación eliminada exitosamente.")
     }
     
-    // --- LIKE / DISLIKE ---
     func likePublication(publicationId: String, currentLikes: Int, shouldLike: Bool) {
         let likesRef = dbRef.child("publications").child(publicationId).child("likes")
         
@@ -73,7 +91,6 @@ class PublicationService: ObservableObject {
         }
     }
     
-    // --- ESCUCHAR PUBLICACIONES ---
     func listenForPublications(completion: @escaping ([Publication]) -> Void) -> DatabaseHandle {
         let publicationsRef = dbRef.child("publications")
         let handle = publicationsRef.observe(.value) { snapshot in
@@ -95,21 +112,11 @@ class PublicationService: ObservableObject {
         return handle
     }
     
-    // --- DETENER ESCUCHA ---
     func removeListener(with handle: DatabaseHandle) {
         let publicationsRef = dbRef.child("publications")
         publicationsRef.removeObserver(withHandle: handle)
     }
     
-    // --- SUBIR IMAGEN ---
-    private func uploadPublicationImage(_ imageData: Data) async throws -> URL {
-        let imageId = UUID().uuidString
-        let imageRef = storageRef.child("publication_images/\(imageId).jpg")
-        let _ = try await imageRef.putDataAsync(imageData)
-        return try await imageRef.downloadURL()
-    }
-    
-    // --- AÑADIR COMENTARIO ---
     func addComment(text: String, to publication: Publication, by author: User, parentId: String? = nil) async throws {
         let newComment = Comment(
             id: UUID().uuidString,
@@ -122,14 +129,12 @@ class PublicationService: ObservableObject {
             createdAt: Date().timeIntervalSince1970,
             parentId: parentId
         )
-        
-        // La ruta para guardar no cambia, sigue siendo bajo el ID de la publicación.
+
         let commentRef = dbRef.child("comments").child(publication.id).childByAutoId()
         let commentData = try JSONEncoder().encode(newComment)
         let commentJson = try JSONSerialization.jsonObject(with: commentData)
         try await commentRef.setValue(commentJson)
         
-        // Actualizamos el contador de comentarios de la publicación
         let publicationCommentsRef = dbRef.child("publications").child(publication.id).child("commentCount")
         try await publicationCommentsRef.runTransactionBlock { (currentData: MutableData) -> TransactionResult in
             var count = currentData.value as? Int ?? 0
@@ -139,7 +144,6 @@ class PublicationService: ObservableObject {
         }
     }
     
-    // --- ESCUCHAR COMENTARIOS ---
     func listenForComments(for publicationId: String, completion: @escaping ([Comment]) -> Void) -> DatabaseHandle {
         let commentsRef = dbRef.child("comments").child(publicationId)
         

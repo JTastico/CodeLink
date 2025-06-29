@@ -7,96 +7,8 @@
 
 import SwiftUI
 
-// MARK: - Color Palette Extension
-extension Color {
-    static let darkBlue = Color(red: 0.1, green: 0.2, blue: 0.4)
-    static let mediumBlue = Color(red: 0.2, green: 0.3, blue: 0.5)
-    static let lightBlue = Color(red: 0.4, green: 0.6, blue: 0.8)
-    static let skyBlue = Color(red: 0.5, green: 0.7, blue: 0.9)
-    static let softWhite = Color(red: 0.95, green: 0.95, blue: 0.97)
-    static let darkBackground = Color(red: 0.05, green: 0.05, blue: 0.1)
-}
-
-// MARK: - Comment List View
-struct CommentListView: View {
-    @ObservedObject var viewModel: CommentsViewModel
-    @Binding var replyingTo: Comment?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack {
-                Image(systemName: "bubble.left.and.bubble.right.fill")
-                    .foregroundColor(.lightBlue)
-                    .font(.title3)
-                
-                Text("Comentarios")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.softWhite)
-                
-                Spacer()
-                
-                Text("\(viewModel.commentThreads.count)")
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundColor(.lightBlue)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.darkBlue)
-                    .clipShape(Capsule())
-            }
-            .padding(.bottom, 8)
-            
-            if viewModel.commentThreads.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "message.circle")
-                        .font(.system(size: 40))
-                        .foregroundColor(.mediumBlue)
-                    
-                    Text("Aún no hay comentarios")
-                        .font(.headline)
-                        .foregroundColor(.softWhite)
-                    
-                    Text("¡Sé el primero en comentar!")
-                        .font(.subheadline)
-                        .foregroundColor(.lightBlue)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 40)
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color.darkBlue.opacity(0.3))
-                        .stroke(Color.mediumBlue.opacity(0.5), lineWidth: 1)
-                )
-            } else {
-                LazyVStack(spacing: 16) {
-                    ForEach(viewModel.commentThreads) { thread in
-                        VStack(alignment: .leading, spacing: 12) {
-                            CommentRowView(comment: thread.parent, isReply: false, replyingTo: $replyingTo)
-                            
-                            if !thread.replies.isEmpty {
-                                VStack(spacing: 8) {
-                                    ForEach(thread.replies) { reply in
-                                        CommentRowView(comment: reply, isReply: true, replyingTo: $replyingTo)
-                                    }
-                                }
-                                .padding(.leading, 20)
-                            }
-                        }
-                        .padding(16)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.darkBlue.opacity(0.4))
-                                .stroke(Color.mediumBlue.opacity(0.3), lineWidth: 1)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Comment Row View
+// --- LA SOLUCIÓN ESTÁ AQUÍ ---
+// Volvemos a definir la sub-vista que se usa para cada fila de comentario.
 struct CommentRowView: View {
     let comment: Comment
     let isReply: Bool
@@ -104,82 +16,44 @@ struct CommentRowView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [.lightBlue, .skyBlue],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: isReply ? 28 : 32, height: isReply ? 28 : 32)
-                    .overlay(
-                        Text(String(comment.authorUsername.prefix(1)).uppercased())
-                            .font(.system(size: isReply ? 12 : 14, weight: .semibold))
-                            .foregroundColor(.white)
-                    )
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(comment.authorUsername)
-                        .font(isReply ? .caption : .subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.softWhite)
-                    
-                    Text(comment.formattedDate)
-                        .font(.caption2)
-                        .foregroundColor(.lightBlue)
-                }
-                
-                Spacer()
-                
-                if isReply {
-                    Image(systemName: "arrow.turn.down.right")
-                        .font(.caption2)
-                        .foregroundColor(.mediumBlue)
-                }
-            }
-            
-            Text(comment.text)
-                .font(isReply ? .callout : .body)
-                .foregroundColor(.softWhite)
+            HStack(alignment: .top, spacing: 12) {
+                // Avatar
+                Image(systemName: "person.crop.circle")
+                    .resizable()
+                    .frame(width: isReply ? 32 : 40, height: isReply ? 32 : 40)
+                    .foregroundColor(.secondary)
 
-            if !isReply {
-                HStack {
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            replyingTo = comment
-                        }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "arrowshape.turn.up.left")
-                                .font(.caption2)
-                            Text("Responder")
-                                .font(.caption)
-                                .fontWeight(.medium)
-                        }
-                        .foregroundColor(.lightBlue.opacity(0.8))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(
-                            Capsule()
-                                .fill(Color.darkBlue.opacity(0.6))
-                                .overlay(
-                                    Capsule()
-                                        .stroke(Color.lightBlue.opacity(0.3), lineWidth: 0.5)
-                                )
-                        )
+                // Contenido del comentario
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 4) {
+                        Text(comment.authorUsername)
+                            .font(.system(size: 14, weight: .semibold))
+                        Text("· \(comment.formattedDate)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
-
-                    Spacer()
+                    Text(comment.text)
+                        .font(.system(size: 15))
                 }
+                Spacer()
+            }
+
+            // Botón de responder (solo para comentarios padres)
+            if !isReply {
+                Button("Responder") {
+                    withAnimation {
+                        replyingTo = comment
+                    }
+                }
+                .font(.caption.bold())
+                .frame(maxWidth: .infinity, alignment: .trailing)
                 .padding(.top, 4)
             }
         }
     }
 }
 
-// MARK: - Main Publication Detail View
+
 struct PublicationDetailView: View {
     let publication: Publication
     let currentUser: User?
@@ -189,6 +63,8 @@ struct PublicationDetailView: View {
     @State private var replyingTo: Comment? = nil
     private let publicationService = PublicationService()
 
+    @Environment(\.dismiss) private var dismiss
+
     init(publication: Publication, currentUser: User?) {
         self.publication = publication
         self.currentUser = currentUser
@@ -197,17 +73,18 @@ struct PublicationDetailView: View {
     
     var body: some View {
         ZStack {
-            Color.darkBackground.ignoresSafeArea()
+            Color(.systemGray6).ignoresSafeArea()
             
             VStack(spacing: 0) {
+                headerSection
+                
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        publicationHeader
-                        publicationDescription
-                        elegantDivider
-                        CommentListView(viewModel: viewModel, replyingTo: $replyingTo)
+                    VStack(alignment: .leading, spacing: 20) {
+                        publicationCard
+                        commentsSection
                     }
-                    .padding(20)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
                 }
                 
                 if currentUser != nil {
@@ -215,172 +92,116 @@ struct PublicationDetailView: View {
                 }
             }
         }
-        .navigationTitle(publication.status.displayName)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.darkBackground, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
-        .toolbarColorScheme(.dark, for: .navigationBar)
+        .navigationBarHidden(true)
     }
 
-    private var publicationHeader: some View {
-        HStack(spacing: 16) {
-            Circle()
-                .fill(LinearGradient(colors: [.lightBlue, .skyBlue], startPoint: .topLeading, endPoint: .bottomTrailing))
-                .frame(width: 50, height: 50)
-                .overlay(
-                    Text(String(publication.authorUsername.prefix(1)).uppercased())
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
-                )
-                .shadow(color: .lightBlue.opacity(0.3), radius: 8, x: 0, y: 4)
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(publication.authorUsername)
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.softWhite)
-                
-                HStack(spacing: 8) {
-                    Image(systemName: "clock")
-                        .font(.caption)
-                        .foregroundColor(.lightBlue)
-                    Text(publication.formattedDate)
-                        .font(.caption)
-                        .foregroundColor(.lightBlue)
+    private var headerSection: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Button { dismiss() } label: { Image(systemName: "chevron.left").font(.headline.weight(.bold)) }
+                Spacer()
+                VStack {
+                    Text("Publicación").font(.headline.bold())
+                    Text(publication.status.displayName).font(.caption).foregroundColor(.secondary)
                 }
+                Spacer()
+                Image(systemName: "chevron.left").opacity(0) // Para mantener el título centrado
+            }
+            .padding()
+            Divider()
+        }
+        .background(Color(.systemBackground).ignoresSafeArea(edges: .top))
+    }
+
+    private var publicationCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                Image(systemName: "person.crop.circle").resizable().frame(width: 44, height: 44).foregroundColor(.blue)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(publication.authorUsername).font(.system(size: 16, weight: .semibold))
+                    Text(publication.formattedDate).font(.system(size: 12)).foregroundColor(.secondary)
+                }
+                Spacer()
+            }
+
+            Text(publication.description)
+                .font(.system(size: 15)).lineSpacing(4)
+            
+            if let imageURLString = publication.imageURL, let imageURL = URL(string: imageURLString) {
+                AsyncImage(url: imageURL) { image in
+                    image.resizable().aspectRatio(contentMode: .fit).cornerRadius(15)
+                } placeholder: {
+                    Rectangle().fill(Color(.systemGray5)).frame(height: 250).cornerRadius(15).overlay(ProgressView())
+                }
+                .padding(.vertical, 8)
             }
             
-            Spacer()
-            statusBadge
+            Text(publication.status.displayName)
+                .font(.caption.bold()).padding(.horizontal, 10).padding(.vertical, 4)
+                .background(Color.blue.opacity(0.15)).foregroundColor(.blue).clipShape(Capsule())
         }
         .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(Color.darkBlue.opacity(0.6))
-                .stroke(Color.mediumBlue.opacity(0.4), lineWidth: 1)
-                .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
-        )
+        .background(RoundedRectangle(cornerRadius: 20).fill(Color(.systemBackground)))
+        .shadow(color: .black.opacity(0.05), radius: 10, y: 5)
     }
-
-    private var statusBadge: some View {
-        Text(publication.status.displayName)
-            .font(.caption)
-            .fontWeight(.medium)
-            .foregroundColor(.white)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(
-                Capsule()
-                    .fill(LinearGradient(colors: [.lightBlue, .skyBlue], startPoint: .leading, endPoint: .trailing))
-            )
-            .shadow(color: .lightBlue.opacity(0.4), radius: 4, x: 0, y: 2)
-    }
-
-    private var publicationDescription: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Descripción")
-                .font(.headline)
-                .foregroundColor(.softWhite)
-            Text(publication.description)
-                .font(.body)
-                .foregroundColor(.softWhite)
-                .lineSpacing(4)
-        }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.darkBlue.opacity(0.3))
-                .stroke(Color.mediumBlue.opacity(0.2), lineWidth: 1)
-        )
-    }
-
-    private var elegantDivider: some View {
-        Rectangle()
-            .fill(LinearGradient(colors: [.clear, .lightBlue, .clear], startPoint: .leading, endPoint: .trailing))
-            .frame(height: 1)
-            .padding(.vertical, 8)
-    }
-
-    private var commentInputField: some View {
-        VStack(spacing: 0) {
-            if let replying = replyingTo {
-                HStack {
-                    Text("Respondiendo a ") +
-                    Text("@\(replying.authorUsername)").bold()
-                    Spacer()
-                    Button {
-                        withAnimation {
-                            replyingTo = nil
+    
+    private var commentsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Comentarios").font(.headline)
+            
+            if viewModel.commentThreads.isEmpty {
+                Text("Sé el primero en comentar.").foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .center).padding(.vertical, 20)
+            } else {
+                ForEach(viewModel.commentThreads) { thread in
+                    VStack {
+                        CommentRowView(comment: thread.parent, isReply: false, replyingTo: $replyingTo)
+                        ForEach(thread.replies) { reply in
+                            CommentRowView(comment: reply, isReply: true, replyingTo: $replyingTo).padding(.leading, 20)
                         }
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.white.opacity(0.6))
+                    }
+                    if thread.id != viewModel.commentThreads.last?.id {
+                        Divider().padding(.vertical, 8)
                     }
                 }
-                .font(.caption)
-                .foregroundColor(.lightBlue)
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
             }
-
-            HStack(spacing: 16) {
-                if let user = currentUser {
-                    Circle()
-                        .fill(LinearGradient(colors: [.lightBlue, .skyBlue], startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .frame(width: 36, height: 36)
-                        .overlay(
-                            Text(String(user.username.prefix(1)).uppercased())
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.white)
-                        )
+        }
+        .padding(20)
+        .background(RoundedRectangle(cornerRadius: 20).fill(Color(.systemBackground)))
+        .shadow(color: .black.opacity(0.05), radius: 10, y: 5)
+    }
+    
+    private var commentInputField: some View {
+        VStack(spacing: 0) {
+            Divider()
+            if let replying = replyingTo {
+                HStack {
+                    Text("Respondiendo a @\(replying.authorUsername)")
+                    Spacer()
+                    Button { withAnimation { replyingTo = nil } } label: { Image(systemName: "xmark.circle.fill") }
                 }
-
-                TextField(
-                    replyingTo == nil ? "Escribe un comentario..." : "Escribe tu respuesta...",
-                    text: $newCommentText,
-                    axis: .vertical
-                )
-                .font(.body)
-                .foregroundColor(.softWhite)
-                .padding(12)
-                .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(Color.darkBlue.opacity(0.6))
-                        .stroke(Color.mediumBlue.opacity(0.4), lineWidth: 1)
-                )
-                .lineLimit(1...4)
-
+                .font(.caption).padding(.horizontal).padding(.top, 8).foregroundColor(.secondary)
+            }
+            
+            HStack(spacing: 16) {
+                TextField(replyingTo == nil ? "Añade un comentario..." : "Escribe tu respuesta...", text: $newCommentText, axis: .vertical)
+                    .textFieldStyle(.plain).padding(10).background(Color(.systemGray5)).clipShape(Capsule()).lineLimit(1...4)
                 Button {
                     Task { await postComment() }
                 } label: {
-                    Image(systemName: "paperplane.circle.fill")
-                        .font(.title2)
-                        .foregroundColor(newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .mediumBlue : .lightBlue)
-                        .scaleEffect(newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.8 : 1.0)
-                        .animation(.easeInOut(duration: 0.2), value: newCommentText.isEmpty)
-                }
-                .disabled(newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Image(systemName: "arrow.up.circle.fill").font(.title).foregroundColor(newCommentText.isEmpty ? .gray : .blue)
+                }.disabled(newCommentText.isEmpty)
             }
-            .padding(20)
-            .background(
-                Rectangle()
-                    .fill(Color.darkBackground)
-                    .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: -5)
-            )
+            .padding(.horizontal).padding(.vertical, 8)
         }
+        .background(Color(.systemBackground))
     }
 
     private func postComment() async {
-        guard let author = currentUser,
-              !newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-
+        guard let author = currentUser, !newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         let commentToPost = newCommentText
         let parentId = replyingTo?.id
         newCommentText = ""
         replyingTo = nil
-
         do {
             try await publicationService.addComment(text: commentToPost, to: publication, by: author, parentId: parentId)
         } catch {

@@ -22,10 +22,13 @@ extension Color {
     static let secondaryTextColor = Color.white.opacity(0.7)
     static let tertiaryTextColor = Color.white.opacity(0.5)
     
-    
     // Accent Colors
     static let accentColor = Color(red: 0/255, green: 191/255, blue: 255/255)
     static let accentBlue = Color(red: 51/255, green: 128/255, blue: 217/255)
+    
+    // --- LA CORRECCIÓN ESTÁ AQUÍ ---
+    // Añadimos la definición que faltaba para 'lightBlue'
+    static let lightBlue = Color(red: 90/255, green: 200/255, blue: 250/255)
     
     static let vibrantBlue = Color(red: 65/255, green: 145/255, blue: 255/255)
     static let softPurple = Color(red: 125/255, green: 122/255, blue: 232/255)
@@ -102,6 +105,8 @@ struct SecondaryButtonStyle: ButtonStyle {
             .opacity(isDisabled ? 0.7 : 1.0)
     }
 }
+
+// ... (El resto del archivo no necesita cambios)
 
 struct FloatingButtonStyle: ButtonStyle {
     var size: CGFloat = 56
