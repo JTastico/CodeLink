@@ -38,6 +38,8 @@ class AuthService: ObservableObject {
             DispatchQueue.main.async {
                 self?.firebaseUser = user
                 if let firebaseUser = user {
+                    // Este es el lugar correcto para manejar la lógica del perfil.
+                    // Se ejecuta siempre que el estado de autenticación cambia.
                     self?.listenForUserProfileChanges(userId: firebaseUser.uid)
                 } else {
                     self?.removeUserProfileListener()
@@ -59,6 +61,8 @@ class AuthService: ObservableObject {
                     print("Error al decodificar perfil de usuario en tiempo real: \(error)")
                 }
             } else {
+                // Si el usuario no existe en la base de datos, lo creamos.
+                // Esto solo debería ocurrir la primera vez que inicia sesión.
                 self?.createUserProfileIfNeeded(for: userId)
             }
         }
@@ -189,10 +193,8 @@ class AuthService: ObservableObject {
                                 self?.authError = "Error de autenticación: \(error.localizedDescription)"
                                 return
                             }
-                            
                             if let user = authResult?.user {
                                 self?.firebaseUser = user
-                                self?.createUserProfileIfNeeded(for: user.uid)
                             }
                         }
                     }
@@ -214,7 +216,6 @@ class AuthService: ObservableObject {
                 
                 if let user = authResult?.user {
                     self?.firebaseUser = user
-                    self?.createUserProfileIfNeeded(for: user.uid)
                 }
             }
         }

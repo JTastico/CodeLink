@@ -5,14 +5,6 @@
 //  Created by Jamil Turpo on 28/06/25.
 //
 
-
-//
-//  ProfileController.swift
-//  CodeLink
-//
-//  Created by Jamil Turpo on 28/06/25.
-//
-
 import Foundation
 import SwiftUI
 
