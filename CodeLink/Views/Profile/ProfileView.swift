@@ -9,7 +9,19 @@ import SwiftUI
 
 struct ProfileView: View {
     @ObservedObject var authService: AuthService
+    @StateObject private var feedViewModel = FeedViewModel()
     @State private var isAnimating = false
+
+    // Filtra las publicaciones para mostrar solo las del usuario actual
+    private var myPublications: [Binding<Publication>] {
+        feedViewModel.publications
+            .filter { $0.authorUid == authService.appUser?.id }
+            .map { publication in
+                // Encuentra el índice de la publicación en el array original para poder enlazarlo (Binding)
+                let index = feedViewModel.publications.firstIndex(where: { $0.id == publication.id })!
+                return $feedViewModel.publications[index]
+            }
+    }
 
     var body: some View {
         NavigationStack {
@@ -32,6 +44,9 @@ struct ProfileView: View {
                                         .foregroundColor(Color.primaryTextColor)
                                 }
                             }
+
+                            // --- SECCIÓN DE PUBLICACIONES ---
+                            myPublicationsSection
                         }
                         .padding(.horizontal, 24)
                         .padding(.top, 40)
@@ -52,6 +67,35 @@ struct ProfileView: View {
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
                 setupAnimations()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var myPublicationsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Mis Publicaciones")
+                .font(.headline)
+                .foregroundColor(Color.accentBlue)
+                .padding(.horizontal)
+
+            if myPublications.isEmpty {
+                VStack {
+                    Text("Aún no has realizado ninguna publicación.")
+                        .foregroundColor(.secondaryTextColor)
+                        .padding()
+                }
+                .frame(maxWidth: .infinity)
+                .glassCard(cornerRadius: 20)
+                
+            } else {
+                LazyVStack(spacing: 20) {
+                    ForEach(myPublications, id: \.id) { $publication in
+                        PublicationRowView(publication: $publication,
+                                           currentUserId: authService.appUser?.id ?? "",
+                                           currentUser: authService.appUser)
+                    }
+                }
             }
         }
     }
