@@ -56,13 +56,6 @@ struct EditProfileView: View {
                     .padding(.bottom, 36)
                 }
             }
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Text("Editar Perfil")
-                        .font(.title2.bold())
-                        .foregroundColor(Color.primaryTextColor)
-                }
-            }
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Color.deepBackground, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)

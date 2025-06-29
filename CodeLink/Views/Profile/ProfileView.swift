@@ -9,7 +9,6 @@ import SwiftUI
 
 struct ProfileView: View {
     @ObservedObject var authService: AuthService
-    @State private var showingEditProfile = false
     @State private var isAnimating = false
 
     var body: some View {
@@ -33,23 +32,6 @@ struct ProfileView: View {
                                         .foregroundColor(Color.primaryTextColor)
                                 }
                             }
-
-                            glassSection(title: "Configuración") {
-                                Button("Editar Perfil") {
-                                    showingEditProfile = true
-                                }
-                                .buttonStyle(PrimaryButtonStyle())
-                            }
-
-                            glassSection(title: "Cuenta") {
-                                Button("Cerrar Sesión", role: .destructive) {
-                                    // La lógica de cerrar sesión puede permanecer aquí o moverse
-                                    // a un controlador si se vuelve más compleja.
-                                    authService.signOut()
-                                }
-                                .buttonStyle(SecondaryButtonStyle())
-                                .foregroundColor(.red)
-                            }
                         }
                         .padding(.horizontal, 24)
                         .padding(.top, 40)
@@ -68,14 +50,6 @@ struct ProfileView: View {
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
-            .sheet(isPresented: $showingEditProfile) {
-                if let user = authService.appUser {
-                    // 1. Crea una instancia del controlador con los datos necesarios
-                    let profileController = ProfileController(user: user, authService: authService)
-                    // 2. Pasa el controlador a la vista de edición
-                    EditProfileView(controller: profileController)
-                }
-            }
             .onAppear {
                 setupAnimations()
             }
