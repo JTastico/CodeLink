@@ -11,28 +11,40 @@ struct FeedView: View {
     @StateObject private var viewModel = FeedViewModel()
     @ObservedObject var authService: AuthService
     @State private var showingCreatePublication = false
+    
+    // 1. Estado para almacenar el filtro seleccionado
+    @State private var selectedStatus: PublicationStatus? = nil
 
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(.systemGray6).ignoresSafeArea()
+                // He cambiado el color a uno de los de tu tema para consistencia
+                Color.backgroundColor.ignoresSafeArea()
 
                 ScrollView {
                     LazyVStack(spacing: 20) {
                         headerSection
-
-                        ForEach($viewModel.publications) { $publication in
-                            NavigationLink(destination:
-                                PublicationDetailView(publication: publication, currentUser: authService.appUser)
-                            ) {
-                                PublicationRowView(publication: $publication,
-                                                   currentUserId: authService.appUser?.id ?? "",
-                                                   currentUser: authService.appUser)
+                        
+                        // 2. Barra de filtros añadida aquí
+                        filterBar
+                        
+                        // 3. El ForEach ahora filtra las publicaciones
+                        ForEach(viewModel.publications.filter { selectedStatus == nil || $0.status == selectedStatus }) { publication in
+                            // Para mantener el Binding, buscamos el índice en la fuente original
+                            if let index = viewModel.publications.firstIndex(where: { $0.id == publication.id }) {
+                                NavigationLink(destination:
+                                    PublicationDetailView(publication: publication, currentUser: authService.appUser)
+                                ) {
+                                    PublicationRowView(publication: $viewModel.publications[index],
+                                                       currentUserId: authService.appUser?.id ?? "",
+                                                       currentUser: authService.appUser)
+                                        .padding(.horizontal, 20) // Padding aplicado a la fila
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
                         }
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.top)
                     .padding(.bottom, 100)
                 }
 
@@ -45,12 +57,8 @@ struct FeedView: View {
                         } label: {
                             Image(systemName: "plus")
                                 .font(.system(size: 20, weight: .bold))
-                                .foregroundColor(.white)
-                                .padding()
-                                .background(Color.blue)
-                                .clipShape(Circle())
-                                .shadow(radius: 5)
                         }
+                        .buttonStyle(FloatingButtonStyle()) // Reutilizando tu estilo de botón flotante
                         .padding(.trailing, 24)
                         .padding(.bottom, 34)
                     }
@@ -58,9 +66,11 @@ struct FeedView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Text("CodeLink").font(.title2.bold()).foregroundColor(.primary)
+                    Text("CodeLink").font(.title2.bold()).foregroundColor(.primaryTextColor)
                 }
             }
+            .toolbarBackground(Color.backgroundColor, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .navigationBarTitleDisplayMode(.inline)
         }
         .sheet(isPresented: $showingCreatePublication) {
@@ -74,16 +84,78 @@ struct FeedView: View {
         VStack(spacing: 16) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Últimas Publicaciones").font(.title2.bold()).foregroundColor(.primary)
-                    Text("Descubre contenido de la comunidad").font(.subheadline).foregroundColor(.secondary)
+                    Text("Últimas Publicaciones").font(.title2.bold()).foregroundColor(.primaryTextColor)
+                    Text("Descubre contenido de la comunidad").font(.subheadline).foregroundColor(.secondaryTextColor)
                 }
                 Spacer()
             }
             Rectangle()
-                .fill(LinearGradient(colors: [.clear, .blue.opacity(0.3), .clear], startPoint: .leading, endPoint: .trailing))
+                .fill(LinearGradient(colors: [.clear, Color.accentBlue.opacity(0.3), .clear], startPoint: .leading, endPoint: .trailing))
                 .frame(height: 1.5)
                 .padding(.horizontal, 40)
         }
+        .padding(.horizontal, 20)
         .padding(.top, 8)
+    }
+
+    // --- VISTA PARA LA BARRA DE FILTROS ---
+    private var filterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 12) {
+                // Botón para mostrar todos
+                FilterButton(
+                    title: "Todos",
+                    isSelected: selectedStatus == nil
+                ) {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedStatus = nil
+                    }
+                }
+                
+                // Botones para cada tipo de publicación
+                ForEach(PublicationStatus.allCases, id: \.self) { status in
+                    FilterButton(
+                        title: status.displayName, //
+                        isSelected: selectedStatus == status
+                    ) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedStatus = status
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 10)
+        }
+    }
+}
+
+// --- COMPONENTE REUTILIZABLE PARA LOS BOTONES DE FILTRO ---
+struct FilterButton: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.subheadline)
+                .fontWeight(isSelected ? .bold : .medium)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(
+                    ZStack {
+                        // Usamos tus colores y estilos para consistencia
+                        if isSelected {
+                            Capsule().fill(Color.accentBlue)
+                                .shadow(color: Color.accentBlue.opacity(0.4), radius: 5, y: 2)
+                        } else {
+                            Capsule().fill(Color.surfaceColor)
+                                .overlay(Capsule().stroke(Color.white.opacity(0.1), lineWidth: 1))
+                        }
+                    }
+                )
+                .foregroundColor(isSelected ? .white : .secondaryTextColor)
+        }
     }
 }
