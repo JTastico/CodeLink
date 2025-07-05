@@ -41,7 +41,7 @@ struct FeedView: View {
                                     PublicationRowView(publication: $viewModel.publications[index],
                                                        currentUserId: authService.appUser?.id ?? "",
                                                        currentUser: authService.appUser)
-                                    // Padding aplicado a la fila, como lo tenías
+                                        // Padding aplicado a la fila, como lo tenías
                                         .padding(.horizontal, 20)
                                 }
                                 .buttonStyle(.plain)
@@ -68,12 +68,13 @@ struct FeedView: View {
                     }
                 }
             }
+            // CORRECCIÓN: Usar ToolbarItemGroup para evitar ambigüedad
             .toolbar {
-                ToolbarItem(placement: .principal) {
+                ToolbarItemGroup(placement: .principal) {
                     Text("CodeLink").font(.title2.bold()).foregroundColor(.primaryTextColor)
                 }
                 // Botón de búsqueda de usuarios (RE-AÑADIDO)
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
                     Button {
                         showingUserSearch = true
                     } label: {
@@ -93,7 +94,7 @@ struct FeedView: View {
         }
         // Sheet para la vista de búsqueda de usuarios (RE-AÑADIDO)
         .sheet(isPresented: $showingUserSearch) {
-            UserSearchView(authService: authService)
+            UserSearchView(authService: authService, onUserSelected: { _ in }) // Pasa authService
         }
     }
 

@@ -9,9 +9,12 @@ import SwiftUI
 
 struct UserSearchView: View {
     @Environment(\.dismiss) var dismiss
-    @ObservedObject var authService: AuthService // <-- NUEVO: Recibe AuthService
+    @ObservedObject var authService: AuthService // Recibe AuthService
     @StateObject private var viewModel = SearchViewModel()
     @State private var searchText: String = ""
+    
+    // NUEVO: Closure para pasar el usuario seleccionado de vuelta a la vista que la presenta
+    var onUserSelected: (User) -> Void
     
     // Paleta de colores reutilizada de Theme.swift
     private let primaryDark = Color(red: 0.05, green: 0.08, blue: 0.15)
@@ -61,6 +64,7 @@ struct UserSearchView: View {
                     Button {
                         dismiss()
                     } label: {
+                        // CORRECCIÓN: 'systemSystemName' a 'systemName'
                         Image(systemName: "xmark")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(lightBlue)
@@ -82,6 +86,7 @@ struct UserSearchView: View {
     private var searchBar: some View {
         VStack(spacing: 10) {
             HStack {
+                // CORRECCIÓN: 'systemSystemName' a 'systemName'
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(softWhite.opacity(0.7))
                 
@@ -89,7 +94,7 @@ struct UserSearchView: View {
                     .foregroundColor(softWhite)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
-                    .onChange(of: searchText) { newValue in
+                    .onChange(of: searchText) { oldValue, newValue in
                         viewModel.searchUsers(query: newValue)
                     }
                 
@@ -97,6 +102,7 @@ struct UserSearchView: View {
                     Button {
                         searchText = ""
                     } label: {
+                        // CORRECCIÓN: 'systemSystemName' a 'systemName'
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(softWhite.opacity(0.7))
                     }
@@ -120,7 +126,10 @@ struct UserSearchView: View {
     private var userResultsList: some View {
         List {
             ForEach(viewModel.users) { user in
-                NavigationLink(destination: ProfileView(authService: authService, user: user)) { // <-- CAMBIO AQUÍ: Pasa authService
+                Button(action: {
+                    onUserSelected(user) // Llama a la closure con el usuario seleccionado
+                    dismiss() // Cierra la hoja modal
+                }) {
                     HStack(spacing: 12) {
                         AvatarView(imageURL: user.profilePictureURL, size: 44)
                         VStack(alignment: .leading) {
@@ -144,6 +153,7 @@ struct UserSearchView: View {
     
     private func emptyStateView(message: String) -> some View {
         VStack(spacing: 16) {
+            // CORRECCIÓN: 'systemSystemName' a 'systemName'
             Image(systemName: "person.3.fill")
                 .font(.system(size: 60))
                 .foregroundColor(accentBlue.opacity(0.6))
@@ -160,6 +170,6 @@ struct UserSearchView: View {
 
 struct UserSearchView_Previews: PreviewProvider {
     static var previews: some View {
-        UserSearchView(authService: AuthService()) // Pasa un AuthService de ejemplo para el Preview
+        UserSearchView(authService: AuthService(), onUserSelected: { _ in })
     }
 }

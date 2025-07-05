@@ -5,8 +5,10 @@
 //  Created by Jamil Turpo on 24/06/25.
 //
 import Foundation
+import FirebaseFirestore
 
 struct User: Identifiable, Hashable, Codable {
+    
     let id: String
     var username: String
     var fullName: String

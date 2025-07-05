@@ -18,10 +18,16 @@ struct MainView: View {
                     Label("Inicio", systemImage: "house.fill")
                 }
 
-            // --- NUEVA PESTAÑA DE NOTIFICACIONES ---
+            // --- PESTAÑA DE NOTIFICACIONES ---
             NotificationsView(authService: authService) // Pasa authService a NotificationsView
                 .tabItem {
                     Label("Notificaciones", systemImage: "bell.fill")
+                }
+            
+            // --- NUEVA PESTAÑA DE MENSAJES ---
+            ConversationsListView(authService: authService)
+                .tabItem {
+                    Label("Mensajes", systemImage: "message.fill")
                 }
             
             // Pestaña de Perfil
